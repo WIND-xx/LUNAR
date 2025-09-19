@@ -1,0 +1,4 @@
+build
+mx.scratch
+!.settings
+cmake-build-debug-stm32
