@@ -1,52 +1,30 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file    rtc.h
-  * @brief   This file contains all the function prototypes for
-  *          the rtc.c file
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __RTC_H__
-#define __RTC_H__
+#ifndef __RTC_H
+#define __RTC_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "stm32f1xx_hal.h"
 
-/* Includes ------------------------------------------------------------------*/
-#include "main.h"
+// 自定义日期时间结构体(不使用HAL的RTC_DateTypeDef和RTC_TimeTypeDef)
+typedef struct
+{
+    uint8_t year;    // 0-99 (表示2000-2099年)
+    uint8_t month;   // 1-12
+    uint8_t day;     // 1-31
+    uint8_t hour;    // 0-23
+    uint8_t minute;  // 0-59
+    uint8_t second;  // 0-59
+    uint8_t weekday; // 0-6 (0=星期日, 6=星期六)
+} RTC_DateTimeTypeDef;
 
-/* USER CODE BEGIN Includes */
+// 外部函数声明
+HAL_StatusTypeDef RTC_Init(void);
+HAL_StatusTypeDef RTC_SetDateTime(RTC_DateTimeTypeDef *datetime);
+HAL_StatusTypeDef RTC_GetDateTime(RTC_DateTimeTypeDef *datetime);
+uint32_t          RTC_GetUTC(void);
+HAL_StatusTypeDef RTC_SetUTC(uint32_t utc);
+void              RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime);
+uint32_t          RTC_DateTimeToUTC(RTC_DateTimeTypeDef *datetime);
 
-/* USER CODE END Includes */
-
+// 外部RTC句柄声明
 extern RTC_HandleTypeDef hrtc;
 
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-void MX_RTC_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-/* USER CODE END Prototypes */
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __RTC_H__ */
-
+#endif /* __RTC_H */

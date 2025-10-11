@@ -48,13 +48,25 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    BSP/key.c
+    BSP/ntc.c
+    BSP/bt401.c
+    BSP/buzzer.c
+    BSP/led.c
+    BSP/heat.c
+    Tools/pid.c
+    Tools/ring_buffer.c
+    Tools/crc16.c
+    Task/BufferProcess.c
+    Task/task_init.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    Drivers/BSP
-    App
+    BSP
+    Task
+    Tools
 )
 
 # Add project symbols (macros)

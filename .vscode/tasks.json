@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake: 安装",
+			"command": "install",
+			"preset": "Debug",
+			"problemMatcher": [],
+			"detail": "CMake 模板 安装 任务"
+		}
+	]
+}
