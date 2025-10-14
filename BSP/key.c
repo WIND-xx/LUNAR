@@ -10,6 +10,27 @@
  */
 #include "key.h"
 
+#define KEY1_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)
+#define KEY2_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_3)
+#define KEY3_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)
+#define KEY4_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
+#define KEY5_Input      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+
+#define KEY6_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_3)
+#define KEY7_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)
+#define KEY8_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
+#define KEY9_Input      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+
+#define KEY10_Input     HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
+#define KEY11_Input     HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+#define KEY12_Input     HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)
+
+#define KEY14_Input     HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
+#define KEY13_Input     HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+
+#define KEY15_Input     HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+
+#define KEY_Power_Input HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)
 unsigned char get_key(void)
 {
     if (HAL_GPIO_ReadPin(POWER_DC_GPIO_Port, POWER_DC_Pin) == 0)

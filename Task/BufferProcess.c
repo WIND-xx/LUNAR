@@ -21,7 +21,7 @@ void vBufferProcessTask(void *pvParameters)
 
     for (;;)
     {
-        while (bt401_readbyte(&rx_byte) == 0)
+        while (bt401_readbyte(&rx_byte))
         {
             // 检查是否是AT指令的开始
             if (temp_idx == 0 && rx_byte == 'A') { is_at_command = 1; }

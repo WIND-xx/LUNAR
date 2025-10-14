@@ -2,6 +2,7 @@
 #ifndef HEAT_H
 #define HEAT_H
 
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C"
 {

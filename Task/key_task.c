@@ -14,13 +14,8 @@ static unsigned char key_counter = 0;
 void key_scan(void *arg)
 {
     (void) arg;
-
-    // 【关键】定义上次唤醒时间变量（必须是 static 或全局）
     static TickType_t xLastWakeTime = 0;
-
-    // 初始化 xLastWakeTime 为当前时间（首次调用前）
     xLastWakeTime = xTaskGetTickCount();
-
     static unsigned char before = 0;
 
     for (;;)

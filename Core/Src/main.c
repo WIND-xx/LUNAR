@@ -83,7 +83,7 @@ int main(void)
     HAL_Init();
 
     /* USER CODE BEGIN Init */
-    RTC_Init();
+    // RTC_Init();
     /* USER CODE END Init */
 
     /* Configure the system clock */
@@ -147,10 +147,7 @@ void SystemClock_Config(void)
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
     RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
     RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-    {
-        Error_Handler();
-    }
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) { Error_Handler(); }
 
     /** Initializes the CPU, AHB and APB buses clocks
      */
@@ -160,17 +157,11 @@ void SystemClock_Config(void)
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
     RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-    {
-        Error_Handler();
-    }
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) { Error_Handler(); }
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC | RCC_PERIPHCLK_ADC;
     PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
     PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-    {
-        Error_Handler();
-    }
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) { Error_Handler(); }
 }
 
 /* USER CODE BEGIN 4 */
@@ -190,10 +181,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     /* USER CODE BEGIN Callback 0 */
 
     /* USER CODE END Callback 0 */
-    if (htim->Instance == TIM4)
-    {
-        HAL_IncTick();
-    }
+    if (htim->Instance == TIM4) { HAL_IncTick(); }
     /* USER CODE BEGIN Callback 1 */
 
     /* USER CODE END Callback 1 */
@@ -209,9 +197,7 @@ void Error_Handler(void)
     /* User can add his own implementation to report the HAL error return state
      */
     __disable_irq();
-    while (1)
-    {
-    }
+    while (1) {}
     /* USER CODE END Error_Handler_Debug */
 }
 

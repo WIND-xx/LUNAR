@@ -1,7 +1,15 @@
 #include "heat.h"
+#include "stm32f103xb.h"
 #include "tim.h"
+
 void heat_init(void)
 {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.Pin = GPIO_PIN_11;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     // 初始化加热控制硬件
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 }

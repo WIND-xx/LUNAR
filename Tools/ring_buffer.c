@@ -62,7 +62,7 @@ uint8_t RingBuffer_ReadByte(RingBuffer_TypeDef *rb, uint8_t *data)
 {
     if (rb->len == 0)
     {
-        return 1; // 缓冲区空
+        return 0; // 缓冲区空
     }
 
     RINGBUF_ENTER_CRITICAL();
@@ -73,7 +73,7 @@ uint8_t RingBuffer_ReadByte(RingBuffer_TypeDef *rb, uint8_t *data)
 
     RINGBUF_EXIT_CRITICAL();
 
-    return 0; // 成功
+    return 1; // 成功
 }
 
 /**
@@ -90,16 +90,10 @@ uint8_t RingBuffer_ReadByte(RingBuffer_TypeDef *rb, uint8_t *data)
 uint16_t RingBuffer_ReadBytes(RingBuffer_TypeDef *rb, uint8_t *buffer, uint16_t len)
 {
     // 参数合法性检查
-    if (buffer == NULL || len == 0)
-    {
-        return 0;
-    }
+    if (buffer == NULL || len == 0) { return 0; }
 
     // 快速路径：缓冲区为空
-    if (rb->len == 0)
-    {
-        return 0;
-    }
+    if (rb->len == 0) { return 0; }
 
     RINGBUF_ENTER_CRITICAL();
 

@@ -61,10 +61,7 @@ uint8_t bt401_sendbytes(uint8_t *buf, uint16_t len)
 // 线程安全的 printf 风格发送
 int bt401_printf(const char *format, ...)
 {
-    if (xBt401TxMutex == NULL)
-    {
-        return -1;
-    }
+    if (xBt401TxMutex == NULL) { return -1; }
 
     // 获取互斥锁
     if (xSemaphoreTake(xBt401TxMutex, pdMS_TO_TICKS(100)) != pdTRUE)
@@ -83,14 +80,8 @@ int bt401_printf(const char *format, ...)
     va_end(args);
 
     // 截断超长字符串
-    if (len < 0)
-    {
-        len = 0;
-    }
-    else if ((size_t) len >= sizeof(buf))
-    {
-        len = (int) sizeof(buf) - 1;
-    }
+    if (len < 0) { len = 0; }
+    else if ((size_t) len >= sizeof(buf)) { len = (int) sizeof(buf) - 1; }
 
     // 发送数据（使用 HAL_MAX_DELAY，因为已在临界区）
     HAL_StatusTypeDef status = HAL_UART_Transmit(&huart3, (uint8_t *) buf, len, HAL_MAX_DELAY);

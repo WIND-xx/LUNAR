@@ -7,23 +7,7 @@
 #include "rtc.h" // UTC时间处理
 #include "task.h"
 
-// 寄存器定义（明确读写属性）
-typedef enum
-{
-    REG_POWER_SWITCH = 0,   // 关机（只写）
-    REG_UTC_TIMESTAMP_HIGH, // UTC时间戳（高位，只写）
-    REG_UTC_TIMESTAMP_LOW,  // UTC时间戳（低位，只写）
-    REG_ALARM_SET_HIGH,     // 闹钟（高位，只写）
-    REG_ALARM_SET_LOW,      // 闹钟（低位，只写）
-    REG_DELETE_ALARM,       // 删除闹钟（只写）
-    REG_EXECUTE_SHORTCUT,   // 执行快捷键（只写）
-    REG_HEATING_STATUS,     // 热敷工作状态（读写）
-    REG_HEATING_LEVEL,      // 热敷档位（读写，1-5档）
-    REG_HEATING_TIMER,      // 热敷定时（读写，0-120分钟）
-    REG_SHORTCUT_KEY1,      // 快捷键1配置（读写）
-    REG_SHORTCUT_KEY2,      // 快捷键2配置（读写）
-    REG_COUNT,
-} RegisterID;
+#include "alarm.h"
 
 // Modbus 核心常量（仅保留需用到的功能码/异常码）
 #define MODBUS_FUNC_READ_HOLDING_REG   0x03 // 读保持寄存器
@@ -32,6 +16,7 @@ typedef enum
 #define MODBUS_EXCEPTION_ILLEGAL_ADDR  0x02 // 非法地址
 #define MODBUS_EXCEPTION_ILLEGAL_VAL   0x03 // 非法值
 
+extern void do_reg_change_actions(RegisterID reg, uint16_t value);
 // 全局寄存器存储（私有，仅通过内部接口访问）
 static uint16_t g_registers[REG_COUNT] = {0};
 
@@ -88,53 +73,39 @@ static bool _process_special_regs(uint16_t start_addr, uint16_t reg_count, const
 
         switch (curr_reg)
         {
-            // 情况1：UTC时间戳（需高低位同时写入才有效）
-            case REG_UTC_TIMESTAMP_HIGH:
-                // 检查是否同时写入低位（若仅写高位，暂存值，不触发RTC更新）
-                g_registers[REG_UTC_TIMESTAMP_HIGH] = write_val;
-                // 若低位也在本次写入范围内，立即更新RTC
-                if (start_addr <= REG_UTC_TIMESTAMP_LOW && start_addr + reg_count > REG_UTC_TIMESTAMP_LOW)
-                {
-                    uint16_t utc_low = (write_data[(REG_UTC_TIMESTAMP_LOW - start_addr) * 2] << 8) |
-                                       write_data[(REG_UTC_TIMESTAMP_LOW - start_addr) * 2 + 1];
-                    uint32_t utc_full = ((uint32_t) write_val << 16) | utc_low;
-                    if (rtc_set_utc(utc_full) != 0) return false; // 硬件写入失败
-                }
+            // 情况1：UTC时间戳（高低位必定同时写入）
+            case REG_UTC_TIMESTAMP_HIGH: {
+                // 直接从本次写入数据中获取高低位
+                uint16_t utc_high = write_val;
+                uint16_t utc_low = (write_data[(REG_UTC_TIMESTAMP_LOW - start_addr) * 2] << 8) |
+                                   write_data[(REG_UTC_TIMESTAMP_LOW - start_addr) * 2 + 1];
+                uint32_t utc_full = ((uint32_t) utc_high << 16) | utc_low;
+                if (RTC_SetUTC(utc_full) != 0) return false; // 硬件写入失败
+                g_registers[REG_UTC_TIMESTAMP_HIGH] = utc_high;
+                g_registers[REG_UTC_TIMESTAMP_LOW] = utc_low;
+                break;
+            }
+            case REG_UTC_TIMESTAMP_LOW:
+                // 已在REG_UTC_TIMESTAMP_HIGH处理，无需重复处理
                 break;
 
-            case REG_UTC_TIMESTAMP_LOW:
-                // 若高位未在本次写入，需先获取已暂存的高位值
-                uint16_t utc_high = g_registers[REG_UTC_TIMESTAMP_HIGH];
-                uint32_t utc_full = ((uint32_t) utc_high << 16) | write_val;
-                if (rtc_set_utc(utc_full) != 0) return false;
-                g_registers[REG_UTC_TIMESTAMP_LOW] = write_val;
                 break;
 
             // 情况2：闹钟设置（需高低位同时写入）
             case REG_ALARM_SET_HIGH:
+                // 缓存高位值，等待低位写入
                 g_registers[REG_ALARM_SET_HIGH] = write_val;
-                // 若低位也在本次写入，立即解析并保存闹钟
-                if (start_addr <= REG_ALARM_SET_LOW && start_addr + reg_count > REG_ALARM_SET_LOW)
-                {
-                    uint16_t alarm_low = (write_data[(REG_ALARM_SET_LOW - start_addr) * 2] << 8) |
-                                         write_data[(REG_ALARM_SET_LOW - start_addr) * 2 + 1];
-                    Alarm_Struct alarm;
-                    if (alarm_parse_data(write_val, alarm_low, &alarm) != 0) return false; // 解析失败
-                    if (alarm_save(alarm.alarm_id, &alarm) != 0) return false;             // 保存失败
-                }
                 break;
 
             case REG_ALARM_SET_LOW:
-                uint16_t     alarm_high = g_registers[REG_ALARM_SET_HIGH];
-                Alarm_Struct alarm;
-                if (alarm_parse_data(alarm_high, write_val, &alarm) != 0) return false;
-                if (alarm_save(alarm.alarm_id, &alarm) != 0) return false;
+                // 调用抽象闹钟接口处理
+                if (alarm_handle_modbus_write(REG_ALARM_SET_LOW, write_val) != ALARM_OK) { return false; }
                 g_registers[REG_ALARM_SET_LOW] = write_val;
                 break;
 
             // 情况3：删除闹钟（值=闹钟ID）
             case REG_DELETE_ALARM:
-                if (alarm_delete(write_val) != 0) return false; // 硬件删除失败
+                if (alarm_handle_modbus_write(REG_DELETE_ALARM, write_val) != ALARM_OK) { return false; }
                 g_registers[REG_DELETE_ALARM] = write_val;
                 break;
 
@@ -143,14 +114,14 @@ static bool _process_special_regs(uint16_t start_addr, uint16_t reg_count, const
                 if (write_val == 1)
                 {
                     // 执行快捷键1：使用预设的快捷键1配置
-                    g_registers[REG_HEATING_STATUS] = 1;
-                    g_registers[REG_HEATING_LEVEL] = g_registers[REG_SHORTCUT_KEY1];
+                    // g_registers[REG_HEATING_STATUS] = 1;
+                    // g_registers[REG_HEATING_LEVEL] = g_registers[REG_SHORTCUT_KEY1];
                 }
                 else if (write_val == 2)
                 {
                     // 执行快捷键2：使用预设的快捷键2配置
-                    g_registers[REG_HEATING_STATUS] = 1;
-                    g_registers[REG_HEATING_LEVEL] = g_registers[REG_SHORTCUT_KEY2];
+                    // g_registers[REG_HEATING_STATUS] = 1;
+                    // g_registers[REG_HEATING_LEVEL] = g_registers[REG_SHORTCUT_KEY2];
                 }
                 else
                 {
@@ -328,6 +299,7 @@ void vModbusProcessTask(void *pvParameters)
                             break;
                         }
                         // do reg change actions here if needed
+                        do_reg_change_actions(curr_reg, write_val);
                     }
                 }
 
