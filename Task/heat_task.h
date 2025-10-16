@@ -19,7 +19,8 @@ typedef enum
 // 外部声明加热控制结构体
 typedef struct
 {
-    HeatStatus status;             // 加热状态（0-停止，1-运行）
+    HeatStatus status; // 加热状态（0-停止，1-运行）
+    HeatLevel  level;
     float      target_temperature; // 目标温度
     uint16_t   set_time;           // 设置的定时时间（分钟）
     uint32_t   remain_sec;         // 剩余时间（秒）
@@ -33,8 +34,11 @@ void heat_set_timer(uint16_t minute);
 
 // 启动/停止加热（外部调用）
 void heat_set_status(HeatStatus status);
+void heat_status_switch(void);
 
 // 设置加热档位（外部调用）
 void heat_set_level(HeatLevel level);
+void heat_level_up(void);
+void heat_level_down(void);
 
 #endif // HEAT_TASK_H

@@ -218,9 +218,19 @@ void heat_set_status(HeatStatus status)
 
     xSemaphoreGive(xHeatMutex);
 }
+void heat_status_switch(void)
+{
+    xSemaphoreTake(xHeatMutex, portMAX_DELAY);
+    HeatStatus status = heat.status;
+    xSemaphoreGive(xHeatMutex);
 
+    if (status == HEAT_RUNNING)
+        heat_set_status(HEAT_STOP);
+    else
+        heat_set_status(HEAT_RUNNING);
+}
 // 设置加热档位（外部调用接口）
-void heat_set_level(HEAT_LEVEL level)
+void heat_set_level(HeatLevel level)
 {
     xSemaphoreTake(xHeatMutex, portMAX_DELAY);
 
@@ -239,5 +249,19 @@ void heat_set_level(HEAT_LEVEL level)
             heat.target_temperature = 0.0f;
             break;
     }
+    heat.level = level;
     xSemaphoreGive(xHeatMutex);
+}
+void heat_level_up(void)
+{
+
+    int8_t level = heat.level + 1;
+    if (level > HEAT_LEVEL_3) level = HEAT_LEVEL_3;
+    heat_set_level((HeatLevel) level);
+}
+void heat_level_down(void)
+{
+    int8_t level = heat.level - 1;
+    if (level < HEAT_LEVEL_1) level = HEAT_LEVEL_1;
+    heat_set_level((HeatLevel) level);
 }

@@ -1,6 +1,6 @@
 
-#ifndef KEY_H
-#define KEY_H
+#ifndef AT_CTRL_H
+#define AT_CTRL_H
 
 #ifdef __cplusplus
 extern "C"
@@ -8,41 +8,41 @@ extern "C"
 #endif
 
 /*----------------------------------include-----------------------------------*/
-#include "gpio.h"
-#include "main.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+
 /*-----------------------------------macro------------------------------------*/
 
 /*----------------------------------typedef-----------------------------------*/
 typedef enum
 {
-    KEY_NULL = 0,
-    KEY_MUSIC = 1,
-    KEY_BLUETOOTH = 2,
-    KEY_PLAY_PAUSE = 3,
-    KEY_MIN10 = 4,
-    KEY_MIN60 = 5,
-    KEY_PREV = 6,
-    KEY_NEXT = 7,
-    KEY_VOL_DOWN = 8,
-    KEY_VOL_UP = 9,
-    KEY_HEAT_PLUS = 10,
-    KEY_HEAT_MINUS = 11,
-    KEY_SHORTCUT_1 = 12,
-    KEY_SHORTCUT_2 = 13,
-    KEY_MIN30 = 14,
-    KEY_HEAT = 15,
-    KEY_POWER = 18
-} KeyMode;
+    VOLUME_UP,
+    VOLUME_DOWN,
+} VOLUME_ENUM;
+
+typedef enum
+{
+    BTMODE_OFF,
+    BTMODE_BT,
+    BTMODE_MUSIC
+} BTMODE_ENUM;
 /*----------------------------------variable----------------------------------*/
 
 /*-------------------------------------os-------------------------------------*/
 
 /*----------------------------------function----------------------------------*/
-unsigned char get_key(void);
+void bt_start(void);
+void music_switch(void);
+void music_next(void);
+void music_prev(void);
+void music_volume_control(VOLUME_ENUM ctrl);
+void bt_mode(BTMODE_ENUM mode);
+void music_volume_set(uint8_t volume);
 /*------------------------------------test------------------------------------*/
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* KEY_H */
+#endif /* AT_CTRL_H */

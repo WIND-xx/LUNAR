@@ -1,7 +1,9 @@
 #include "key_task.h"
+#include "heat_task.h"
 #include "key.h"
 
 #include "FreeRTOS.h"
+#include "at_ctrl.h"
 #include "task.h"
 
 #define SCAN_INTERVAL_MS       20
@@ -62,72 +64,119 @@ void key_scan(void *arg)
 
 void key_event_handler(uint8_t key_id, key_event_t event)
 {
-    // 根据按键 ID 和事件类型执行相应操作
-    switch (key_id)
+    // 根据事件类型执行相应操作
+    switch (event)
     {
-        case KEY_ZHUMIAN:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
+        case KEY_SHORT_PRESS:
+            switch (key_id)
+            {
+                case KEY_MUSIC:
+                    bt_mode(BTMODE_MUSIC);
+                    break;
+                case KEY_BLUETOOTH:
+                    bt_mode(BTMODE_BT);
+                    break;
+                case KEY_PLAY_PAUSE:
+                    music_switch();
+                    break;
+                case KEY_PREV:
+                    music_prev();
+                    break;
+                case KEY_NEXT:
+                    music_next();
+                    break;
+                case KEY_VOL_DOWN:
+                    music_volume_control(VOLUME_DOWN);
+                    break;
+                case KEY_VOL_UP:
+                    music_volume_control(VOLUME_UP);
+                    break;
+                case KEY_HEAT_PLUS:
+                    heat_level_down();
+                    break;
+                case KEY_HEAT_MINUS:
+                    heat_level_up();
+                    break;
+
+                case KEY_MIN10:
+                    heat_set_timer(10);
+                    break;
+                case KEY_MIN30:
+                    heat_set_timer(30);
+                    break;
+                case KEY_MIN60:
+                    heat_set_timer(60);
+                    break;
+                case KEY_HEAT:
+                    heat_status_switch();
+                    break;
+                case KEY_SHORTCUT_1:
+                    // 短按处理
+                    break;
+                case KEY_SHORTCUT_2:
+                    // 短按处理
+                    break;
+                case KEY_POWER:
+                    // 短按处理
+                    break;
+                default:
+                    break;
+            }
             break;
-        case KEY_BLUETOOTH:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_PLAY_PAUSE:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_MIN10:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_MIN60:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_PREV:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_NEXT:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_VOL_DOWN:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_VOL_UP:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_HEAT_PLUS:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_HEAT_MINUS:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_SHORTCUT_1:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_SHORTCUT_2:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_MIN30:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_HEAT:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
-            break;
-        case KEY_POWER:
-            if (event == KEY_SHORT_PRESS) {}
-            else if (event == KEY_LONG_PRESS) {}
+        case KEY_LONG_PRESS:
+            switch (key_id)
+            {
+                case KEY_MUSIC:
+                    // 长按处理
+                    break;
+                case KEY_BLUETOOTH:
+                    // 长按处理
+                    break;
+                case KEY_PLAY_PAUSE:
+                    // 长按处理
+                    break;
+                case KEY_MIN10:
+                    // 长按处理
+                    break;
+                case KEY_MIN60:
+                    // 长按处理
+                    break;
+                case KEY_PREV:
+                    // 长按处理
+                    break;
+                case KEY_NEXT:
+                    // 长按处理
+                    break;
+                case KEY_VOL_DOWN:
+                    // 长按处理
+                    break;
+                case KEY_VOL_UP:
+                    // 长按处理
+                    break;
+                case KEY_HEAT_PLUS:
+                    // 长按处理
+                    break;
+                case KEY_HEAT_MINUS:
+                    // 长按处理
+                    break;
+                case KEY_SHORTCUT_1:
+                    // 长按处理
+                    break;
+                case KEY_SHORTCUT_2:
+                    // 长按处理
+                    break;
+                case KEY_MIN30:
+                    // 长按处理
+                    break;
+                case KEY_HEAT:
+                    // 长按处理
+                    break;
+                case KEY_POWER:
+                    // 长按处理
+                    break;
+                default:
+                    break;
+            }
             break;
         default:
             break;

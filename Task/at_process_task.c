@@ -1,4 +1,9 @@
 #include "at_process_task.h"
+#include "BufferProcess.h"
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "semphr.h"
+#include "task.h"
 
 void vATCommandProcessTask(void *pvParameters)
 {
