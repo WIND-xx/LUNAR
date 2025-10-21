@@ -19,7 +19,7 @@ extern QueueHandle_t xQueue_AT;     // AT帧处理队列
 extern QueueHandle_t xQueue_Modbus; // Modbus帧处理队列
 
 // -------------------------- 函数声明 --------------------------
-// 缓冲处理任务（入口函数）
-void vBufferProcessTask(void *pvParameters);
+
+void buffer_process_init(void);
 
 #endif

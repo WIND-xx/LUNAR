@@ -6,7 +6,7 @@
 QueueHandle_t xQueue_AT = NULL;
 QueueHandle_t xQueue_Modbus = NULL;
 
-void vBufferProcessTask(void *pvParameters)
+static void vBufferProcessTask(void *pvParameters)
 {
     (void) pvParameters;
 
@@ -95,4 +95,13 @@ void vBufferProcessTask(void *pvParameters)
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }
+}
+
+void buffer_process_init(void)
+{
+    xTaskCreate(vBufferProcessTask, "BufferProcessTask",
+                512, // 堆栈大小
+                NULL,
+                5, // 任务优先级（高于Modbus处理任务）
+                NULL);
 }

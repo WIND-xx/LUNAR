@@ -1,6 +1,6 @@
 /* --------------------------------------------------------------------------
- * Portions Copyright © 2017 STMicroelectronics International N.V. All rights
- *reserved. Portions Copyright (c) 2013-2017 ARM Limited. All rights reserved.
+ * Portions Copyright © 2017 STMicroelectronics International N.V. All rights reserved.
+ * Portions Copyright (c) 2013-2017 ARM Limited. All rights reserved.
  * --------------------------------------------------------------------------
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -24,77 +24,73 @@
 
 #include <string.h>
 
+#include "cmsis_os2.h"                  // ::CMSIS:RTOS2
 #include "cmsis_compiler.h"
-#include "cmsis_os2.h" // ::CMSIS:RTOS2
 
-#include "FreeRTOS.h"     // ARM.FreeRTOS::RTOS:Core
-#include "event_groups.h" // ARM.FreeRTOS::RTOS:Event Groups
-#include "semphr.h"       // ARM.FreeRTOS::RTOS:Core
-#include "task.h"         // ARM.FreeRTOS::RTOS:Core
+#include "FreeRTOS.h"                   // ARM.FreeRTOS::RTOS:Core
+#include "task.h"                       // ARM.FreeRTOS::RTOS:Core
+#include "event_groups.h"               // ARM.FreeRTOS::RTOS:Event Groups
+#include "semphr.h"                     // ARM.FreeRTOS::RTOS:Core
 
 /*---------------------------------------------------------------------------*/
 #ifndef __ARM_ARCH_6M__
-#define __ARM_ARCH_6M__ 0
+  #define __ARM_ARCH_6M__         0
 #endif
 #ifndef __ARM_ARCH_7M__
-#define __ARM_ARCH_7M__ 0
+  #define __ARM_ARCH_7M__         0
 #endif
 #ifndef __ARM_ARCH_7EM__
-#define __ARM_ARCH_7EM__ 0
+  #define __ARM_ARCH_7EM__        0
 #endif
 #ifndef __ARM_ARCH_8M_MAIN__
-#define __ARM_ARCH_8M_MAIN__ 0
+  #define __ARM_ARCH_8M_MAIN__    0
 #endif
 #ifndef __ARM_ARCH_7A__
-#define __ARM_ARCH_7A__ 0
+  #define __ARM_ARCH_7A__         0
 #endif
 
-#if ((__ARM_ARCH_7M__ == 1U) || (__ARM_ARCH_7EM__ == 1U) ||                    \
-     (__ARM_ARCH_8M_MAIN__ == 1U))
-#define IS_IRQ_MASKED()                                                        \
-  ((__get_PRIMASK() != 0U) ||                                                  \
-   ((KernelState == osKernelRunning) && (__get_BASEPRI() != 0U)))
-#elif (__ARM_ARCH_6M__ == 1U)
-#define IS_IRQ_MASKED()                                                        \
-  ((__get_PRIMASK() != 0U) && (KernelState == osKernelRunning))
-#elif (__ARM_ARCH_7A__ == 1)
-#define IS_IRQ_MASKED() (0U)
+#if   ((__ARM_ARCH_7M__      == 1U) || \
+       (__ARM_ARCH_7EM__     == 1U) || \
+       (__ARM_ARCH_8M_MAIN__ == 1U))
+#define IS_IRQ_MASKED()           ((__get_PRIMASK() != 0U) || ((KernelState == osKernelRunning) && (__get_BASEPRI() != 0U)))
+#elif  (__ARM_ARCH_6M__      == 1U)
+#define IS_IRQ_MASKED()           ((__get_PRIMASK() != 0U) &&  (KernelState == osKernelRunning))
+#elif (__ARM_ARCH_7A__       == 1)
+#define IS_IRQ_MASKED()           (0U)
 #else
-#define IS_IRQ_MASKED() (__get_PRIMASK() != 0U)
+#define IS_IRQ_MASKED()           (__get_PRIMASK() != 0U)
 #endif
 
-#if (__ARM_ARCH_7A__ == 1U)
+#if    (__ARM_ARCH_7A__      == 1U)
 /* CPSR mode bitmasks */
-#define CPSR_MODE_USER 0x10U
-#define CPSR_MODE_SYSTEM 0x1FU
+#define CPSR_MODE_USER            0x10U
+#define CPSR_MODE_SYSTEM          0x1FU
 
-#define IS_IRQ_MODE()                                                          \
-  ((__get_mode() != CPSR_MODE_USER) && (__get_mode() != CPSR_MODE_SYSTEM))
+#define IS_IRQ_MODE()             ((__get_mode() != CPSR_MODE_USER) && (__get_mode() != CPSR_MODE_SYSTEM))
 #else
-#define IS_IRQ_MODE() (__get_IPSR() != 0U)
+#define IS_IRQ_MODE()             (__get_IPSR() != 0U)
 #endif
 
-#define IS_IRQ() (IS_IRQ_MODE() || IS_IRQ_MASKED())
+#define IS_IRQ()                  (IS_IRQ_MODE() || IS_IRQ_MASKED())
 
 /* Limits */
-#define MAX_BITS_TASK_NOTIFY 31U
-#define MAX_BITS_EVENT_GROUPS 24U
+#define MAX_BITS_TASK_NOTIFY      31U
+#define MAX_BITS_EVENT_GROUPS     24U
 
-#define THREAD_FLAGS_INVALID_BITS (~((1UL << MAX_BITS_TASK_NOTIFY) - 1U))
-#define EVENT_FLAGS_INVALID_BITS (~((1UL << MAX_BITS_EVENT_GROUPS) - 1U))
+#define THREAD_FLAGS_INVALID_BITS (~((1UL << MAX_BITS_TASK_NOTIFY)  - 1U))
+#define EVENT_FLAGS_INVALID_BITS  (~((1UL << MAX_BITS_EVENT_GROUPS) - 1U))
 
 /* Kernel version and identification string definition */
-#define KERNEL_VERSION                                                         \
-  (((uint32_t)tskKERNEL_VERSION_MAJOR * 10000000UL) |                          \
-   ((uint32_t)tskKERNEL_VERSION_MINOR * 10000UL) |                             \
-   ((uint32_t)tskKERNEL_VERSION_BUILD * 1UL))
+#define KERNEL_VERSION            (((uint32_t)tskKERNEL_VERSION_MAJOR * 10000000UL) | \
+                                   ((uint32_t)tskKERNEL_VERSION_MINOR *    10000UL) | \
+                                   ((uint32_t)tskKERNEL_VERSION_BUILD *        1UL))
 
-#define KERNEL_ID "FreeRTOS V10.0.1"
+#define KERNEL_ID                 "FreeRTOS V10.0.1"
 
 /* Timer callback information structure definition */
 typedef struct {
   osTimerFunc_t func;
-  void *arg;
+  void         *arg;
 } TimerCallback_t;
 
 /* Kernel initialization state */
@@ -107,23 +103,25 @@ static osKernelState_t KernelState;
   The application writer has already defined the array used for the RTOS
   heap - probably so it can be placed in a special segment or address.
 */
-extern uint8_t ucHeap[configTOTAL_HEAP_SIZE];
+  extern uint8_t ucHeap[configTOTAL_HEAP_SIZE];
 #else
-static uint8_t ucHeap[configTOTAL_HEAP_SIZE];
+  static uint8_t ucHeap[configTOTAL_HEAP_SIZE];
 #endif /* configAPPLICATION_ALLOCATED_HEAP */
 
-static HeapRegion_t xHeapRegions[] = {{ucHeap, configTOTAL_HEAP_SIZE},
-                                      {NULL, 0}};
+static HeapRegion_t xHeapRegions[] = {
+  { ucHeap, configTOTAL_HEAP_SIZE },
+  { NULL,   0                     }
+};
 #endif /* USE_FreeRTOS_HEAP_5 */
 
 #if defined(SysTick)
 /* FreeRTOS tick timer interrupt handler prototype */
-extern void xPortSysTickHandler(void);
+extern void xPortSysTickHandler (void);
 
 /*
   SysTick handler implementation that also clears overflow flag.
 */
-void SysTick_Handler(void) {
+void SysTick_Handler (void) {
   /* Clear overflow flag */
   SysTick->CTRL;
 
@@ -134,16 +132,17 @@ void SysTick_Handler(void) {
 
 /*---------------------------------------------------------------------------*/
 
-osStatus_t osKernelInitialize(void) {
+osStatus_t osKernelInitialize (void) {
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else {
+  }
+  else {
     if (KernelState == osKernelInactive) {
-#if defined(USE_FreeRTOS_HEAP_5)
-      vPortDefineHeapRegions(xHeapRegions);
-#endif
+      #if defined(USE_FreeRTOS_HEAP_5)
+        vPortDefineHeapRegions (xHeapRegions);
+      #endif
       KernelState = osKernelReady;
       stat = osOK;
     } else {
@@ -154,11 +153,10 @@ osStatus_t osKernelInitialize(void) {
   return (stat);
 }
 
-osStatus_t osKernelGetInfo(osVersion_t *version, char *id_buf,
-                           uint32_t id_size) {
+osStatus_t osKernelGetInfo (osVersion_t *version, char *id_buf, uint32_t id_size) {
 
   if (version != NULL) {
-    version->api = KERNEL_VERSION;
+    version->api    = KERNEL_VERSION;
     version->kernel = KERNEL_VERSION;
   }
 
@@ -172,37 +170,38 @@ osStatus_t osKernelGetInfo(osVersion_t *version, char *id_buf,
   return (osOK);
 }
 
-osKernelState_t osKernelGetState(void) {
+osKernelState_t osKernelGetState (void) {
   osKernelState_t state;
 
   switch (xTaskGetSchedulerState()) {
-  case taskSCHEDULER_RUNNING:
-    state = osKernelRunning;
-    break;
+    case taskSCHEDULER_RUNNING:
+      state = osKernelRunning;
+      break;
 
-  case taskSCHEDULER_SUSPENDED:
-    state = osKernelLocked;
-    break;
+    case taskSCHEDULER_SUSPENDED:
+      state = osKernelLocked;
+      break;
 
-  case taskSCHEDULER_NOT_STARTED:
-  default:
-    if (KernelState == osKernelReady) {
-      state = osKernelReady;
-    } else {
-      state = osKernelInactive;
-    }
-    break;
+    case taskSCHEDULER_NOT_STARTED:
+    default:
+      if (KernelState == osKernelReady) {
+        state = osKernelReady;
+      } else {
+        state = osKernelInactive;
+      }
+      break;
   }
 
   return (state);
 }
 
-osStatus_t osKernelStart(void) {
+osStatus_t osKernelStart (void) {
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else {
+  }
+  else {
     if (KernelState == osKernelReady) {
       KernelState = osKernelRunning;
       vTaskStartScheduler();
@@ -215,97 +214,102 @@ osStatus_t osKernelStart(void) {
   return (stat);
 }
 
-int32_t osKernelLock(void) {
+int32_t osKernelLock (void) {
   int32_t lock;
 
   if (IS_IRQ()) {
     lock = (int32_t)osErrorISR;
-  } else {
-    switch (xTaskGetSchedulerState()) {
-    case taskSCHEDULER_SUSPENDED:
-      lock = 1;
-      break;
-
-    case taskSCHEDULER_RUNNING:
-      vTaskSuspendAll();
-      lock = 0;
-      break;
-
-    case taskSCHEDULER_NOT_STARTED:
-    default:
-      lock = (int32_t)osError;
-      break;
-    }
   }
-
-  return (lock);
-}
-
-int32_t osKernelUnlock(void) {
-  int32_t lock;
-
-  if (IS_IRQ()) {
-    lock = (int32_t)osErrorISR;
-  } else {
+  else {
     switch (xTaskGetSchedulerState()) {
-    case taskSCHEDULER_SUSPENDED:
-      lock = 1;
+      case taskSCHEDULER_SUSPENDED:
+        lock = 1;
+        break;
 
-      if (xTaskResumeAll() != pdTRUE) {
-        if (xTaskGetSchedulerState() == taskSCHEDULER_SUSPENDED) {
-          lock = (int32_t)osError;
-        }
-      }
-      break;
-
-    case taskSCHEDULER_RUNNING:
-      lock = 0;
-      break;
-
-    case taskSCHEDULER_NOT_STARTED:
-    default:
-      lock = (int32_t)osError;
-      break;
-    }
-  }
-
-  return (lock);
-}
-
-int32_t osKernelRestoreLock(int32_t lock) {
-
-  if (IS_IRQ()) {
-    lock = (int32_t)osErrorISR;
-  } else {
-    switch (xTaskGetSchedulerState()) {
-    case taskSCHEDULER_SUSPENDED:
-    case taskSCHEDULER_RUNNING:
-      if (lock == 1) {
+      case taskSCHEDULER_RUNNING:
         vTaskSuspendAll();
-      } else {
-        if (lock != 0) {
-          lock = (int32_t)osError;
-        } else {
-          if (xTaskResumeAll() != pdTRUE) {
-            if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING) {
-              lock = (int32_t)osError;
+        lock = 0;
+        break;
+
+      case taskSCHEDULER_NOT_STARTED:
+      default:
+        lock = (int32_t)osError;
+        break;
+    }
+  }
+
+  return (lock);
+}
+
+int32_t osKernelUnlock (void) {
+  int32_t lock;
+
+  if (IS_IRQ()) {
+    lock = (int32_t)osErrorISR;
+  }
+  else {
+    switch (xTaskGetSchedulerState()) {
+      case taskSCHEDULER_SUSPENDED:
+        lock = 1;
+
+        if (xTaskResumeAll() != pdTRUE) {
+          if (xTaskGetSchedulerState() == taskSCHEDULER_SUSPENDED) {
+            lock = (int32_t)osError;
+          }
+        }
+        break;
+
+      case taskSCHEDULER_RUNNING:
+        lock = 0;
+        break;
+
+      case taskSCHEDULER_NOT_STARTED:
+      default:
+        lock = (int32_t)osError;
+        break;
+    }
+  }
+
+  return (lock);
+}
+
+int32_t osKernelRestoreLock (int32_t lock) {
+
+  if (IS_IRQ()) {
+    lock = (int32_t)osErrorISR;
+  }
+  else {
+    switch (xTaskGetSchedulerState()) {
+      case taskSCHEDULER_SUSPENDED:
+      case taskSCHEDULER_RUNNING:
+        if (lock == 1) {
+          vTaskSuspendAll();
+        }
+        else {
+          if (lock != 0) {
+            lock = (int32_t)osError;
+          }
+          else {
+            if (xTaskResumeAll() != pdTRUE) {
+              if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING) {
+                lock = (int32_t)osError;
+              }
             }
           }
         }
-      }
-      break;
+        break;
 
-    case taskSCHEDULER_NOT_STARTED:
-    default:
-      lock = (int32_t)osError;
-      break;
+      case taskSCHEDULER_NOT_STARTED:
+      default:
+        lock = (int32_t)osError;
+        break;
     }
   }
 
   return (lock);
 }
 
-uint32_t osKernelGetTickCount(void) {
+uint32_t osKernelGetTickCount (void) {
   TickType_t ticks;
 
   if (IS_IRQ()) {
@@ -317,9 +321,11 @@ uint32_t osKernelGetTickCount(void) {
   return (ticks);
 }
 
-uint32_t osKernelGetTickFreq(void) { return (configTICK_RATE_HZ); }
+uint32_t osKernelGetTickFreq (void) {
+  return (configTICK_RATE_HZ);
+}
 
-uint32_t osKernelGetSysTimerCount(void) {
+uint32_t osKernelGetSysTimerCount (void) {
   TickType_t ticks;
   uint32_t val;
 
@@ -327,18 +333,19 @@ uint32_t osKernelGetSysTimerCount(void) {
 
   ticks = xTaskGetTickCount();
 
-  val = ticks * (configCPU_CLOCK_HZ / configTICK_RATE_HZ);
+  val = ticks * ( configCPU_CLOCK_HZ / configTICK_RATE_HZ );
   portENABLE_INTERRUPTS();
 
   return (val);
 }
 
-uint32_t osKernelGetSysTimerFreq(void) { return (configCPU_CLOCK_HZ); }
+uint32_t osKernelGetSysTimerFreq (void) {
+  return (configCPU_CLOCK_HZ);
+}
 
 /*---------------------------------------------------------------------------*/
 
-osThreadId_t osThreadNew(osThreadFunc_t func, void *argument,
-                         const osThreadAttr_t *attr) {
+osThreadId_t osThreadNew (osThreadFunc_t func, void *argument, const osThreadAttr_t *attr) {
   char empty;
   const char *name;
   uint32_t stack;
@@ -350,11 +357,11 @@ osThreadId_t osThreadNew(osThreadFunc_t func, void *argument,
 
   if (!IS_IRQ() && (func != NULL)) {
     stack = configMINIMAL_STACK_SIZE;
-    prio = (UBaseType_t)osPriorityNormal;
+    prio  = (UBaseType_t)osPriorityNormal;
 
     empty = '\0';
-    name = &empty;
-    mem = -1;
+    name  = &empty;
+    mem   = -1;
 
     if (attr != NULL) {
       if (attr->name != NULL) {
@@ -364,40 +371,37 @@ osThreadId_t osThreadNew(osThreadFunc_t func, void *argument,
         prio = (UBaseType_t)attr->priority;
       }
 
-      if ((prio < osPriorityIdle) || (prio > osPriorityISR) ||
-          ((attr->attr_bits & osThreadJoinable) == osThreadJoinable)) {
+      if ((prio < osPriorityIdle) || (prio > osPriorityISR) || ((attr->attr_bits & osThreadJoinable) == osThreadJoinable)) {
         return (NULL);
       }
 
       if (attr->stack_size > 0U) {
-        /* In FreeRTOS stack is not in bytes, but in sizeof(StackType_t) which
-         * is 4 on ARM ports.       */
-        /* Stack size should be therefore 4 byte aligned in order to avoid
-         * division caused side effects */
+        /* In FreeRTOS stack is not in bytes, but in sizeof(StackType_t) which is 4 on ARM ports.       */
+        /* Stack size should be therefore 4 byte aligned in order to avoid division caused side effects */
         stack = attr->stack_size / sizeof(StackType_t);
       }
 
-      if ((attr->cb_mem != NULL) && (attr->cb_size >= sizeof(StaticTask_t)) &&
-          (attr->stack_mem != NULL) && (attr->stack_size > 0U)) {
+      if ((attr->cb_mem    != NULL) && (attr->cb_size    >= sizeof(StaticTask_t)) &&
+          (attr->stack_mem != NULL) && (attr->stack_size >  0U)) {
         mem = 1;
-      } else {
-        if ((attr->cb_mem == NULL) && (attr->cb_size == 0U) &&
-            (attr->stack_mem == NULL)) {
+      }
+      else {
+        if ((attr->cb_mem == NULL) && (attr->cb_size == 0U) && (attr->stack_mem == NULL)) {
           mem = 0;
         }
       }
-    } else {
+    }
+    else {
       mem = 0;
     }
 
     if (mem == 1) {
-      hTask = xTaskCreateStatic((TaskFunction_t)func, name, stack, argument,
-                                prio, (StackType_t *)attr->stack_mem,
-                                (StaticTask_t *)attr->cb_mem);
-    } else {
+      hTask = xTaskCreateStatic ((TaskFunction_t)func, name, stack, argument, prio, (StackType_t  *)attr->stack_mem,
+                                                                                    (StaticTask_t *)attr->cb_mem);
+    }
+    else {
       if (mem == 0) {
-        if (xTaskCreate((TaskFunction_t)func, name, (uint16_t)stack, argument,
-                        prio, &hTask) != pdPASS) {
+        if (xTaskCreate ((TaskFunction_t)func, name, (uint16_t)stack, argument, prio, &hTask) != pdPASS) {
           hTask = NULL;
         }
       }
@@ -407,20 +411,20 @@ osThreadId_t osThreadNew(osThreadFunc_t func, void *argument,
   return ((osThreadId_t)hTask);
 }
 
-const char *osThreadGetName(osThreadId_t thread_id) {
+const char *osThreadGetName (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   const char *name;
 
   if (IS_IRQ() || (hTask == NULL)) {
     name = NULL;
   } else {
-    name = pcTaskGetName(hTask);
+    name = pcTaskGetName (hTask);
   }
 
   return (name);
 }
 
-osThreadId_t osThreadGetId(void) {
+osThreadId_t osThreadGetId (void) {
   osThreadId_t id;
 
   if (IS_IRQ()) {
@@ -432,91 +436,83 @@ osThreadId_t osThreadGetId(void) {
   return (id);
 }
 
-osThreadState_t osThreadGetState(osThreadId_t thread_id) {
+osThreadState_t osThreadGetState (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   osThreadState_t state;
 
   if (IS_IRQ() || (hTask == NULL)) {
     state = osThreadError;
-  } else {
-    switch (eTaskGetState(hTask)) {
-    case eRunning:
-      state = osThreadRunning;
-      break;
-    case eReady:
-      state = osThreadReady;
-      break;
-    case eBlocked:
-    case eSuspended:
-      state = osThreadBlocked;
-      break;
-    case eDeleted:
-      state = osThreadTerminated;
-      break;
-    case eInvalid:
-    default:
-      state = osThreadError;
-      break;
+  }
+  else {
+    switch (eTaskGetState (hTask)) {
+      case eRunning:   state = osThreadRunning;    break;
+      case eReady:     state = osThreadReady;      break;
+      case eBlocked:
+      case eSuspended: state = osThreadBlocked;    break;
+      case eDeleted:   state = osThreadTerminated; break;
+      case eInvalid:
+      default:         state = osThreadError;      break;
     }
   }
 
   return (state);
 }
 
-uint32_t osThreadGetStackSpace(osThreadId_t thread_id) {
+uint32_t osThreadGetStackSpace (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   uint32_t sz;
 
   if (IS_IRQ() || (hTask == NULL)) {
     sz = 0U;
   } else {
-    sz = (uint32_t)uxTaskGetStackHighWaterMark(hTask);
+    sz = (uint32_t)uxTaskGetStackHighWaterMark (hTask);
   }
 
   return (sz);
 }
 
-uint32_t osThreadGetStackSize(osThreadId_t thread_id) {
+uint32_t osThreadGetStackSize	(osThreadId_t thread_id) {
   /*
    * this implmentation is not correct.
    * this function is implmented to avoid link errors (undefined reference)
    * Bug reported : https://github.com/ARM-software/CMSIS-FreeRTOS/issues/14
    */
-  (void)thread_id;
+  (void) thread_id;
   return 0;
 }
 
-osStatus_t osThreadSetPriority(osThreadId_t thread_id, osPriority_t priority) {
+osStatus_t osThreadSetPriority (osThreadId_t thread_id, osPriority_t priority) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if ((hTask == NULL) || (priority < osPriorityIdle) ||
-             (priority > osPriorityISR)) {
+  }
+  else if ((hTask == NULL) || (priority < osPriorityIdle) || (priority > osPriorityISR)) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     stat = osOK;
-    vTaskPrioritySet(hTask, (UBaseType_t)priority);
+    vTaskPrioritySet (hTask, (UBaseType_t)priority);
   }
 
   return (stat);
 }
 
-osPriority_t osThreadGetPriority(osThreadId_t thread_id) {
+osPriority_t osThreadGetPriority (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   osPriority_t prio;
 
   if (IS_IRQ() || (hTask == NULL)) {
     prio = osPriorityError;
   } else {
-    prio = (osPriority_t)uxTaskPriorityGet(hTask);
+    prio = (osPriority_t)uxTaskPriorityGet (hTask);
   }
 
   return (prio);
 }
 
-osStatus_t osThreadYield(void) {
+osStatus_t osThreadYield (void) {
   osStatus_t stat;
 
   if (IS_IRQ()) {
@@ -529,47 +525,50 @@ osStatus_t osThreadYield(void) {
   return (stat);
 }
 
-osStatus_t osThreadSuspend(osThreadId_t thread_id) {
+osStatus_t osThreadSuspend (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hTask == NULL) {
+  }
+  else if (hTask == NULL) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     stat = osOK;
-    vTaskSuspend(hTask);
+    vTaskSuspend (hTask);
   }
 
   return (stat);
 }
 
-osStatus_t osThreadResume(osThreadId_t thread_id) {
+osStatus_t osThreadResume (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hTask == NULL) {
+  }
+  else if (hTask == NULL) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     stat = osOK;
-    vTaskResume(hTask);
+    vTaskResume (hTask);
   }
 
   return (stat);
 }
 
-__NO_RETURN void osThreadExit(void) {
+__NO_RETURN void osThreadExit (void) {
 #ifndef USE_FreeRTOS_HEAP_1
-  vTaskDelete(NULL);
+  vTaskDelete (NULL);
 #endif
-  for (;;)
-    ;
+  for (;;);
 }
 
-osStatus_t osThreadTerminate(osThreadId_t thread_id) {
+osStatus_t osThreadTerminate (osThreadId_t thread_id) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   osStatus_t stat;
 #ifndef USE_FreeRTOS_HEAP_1
@@ -577,14 +576,16 @@ osStatus_t osThreadTerminate(osThreadId_t thread_id) {
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hTask == NULL) {
+  }
+  else if (hTask == NULL) {
     stat = osErrorParameter;
-  } else {
-    tstate = eTaskGetState(hTask);
+  }
+  else {
+    tstate = eTaskGetState (hTask);
 
     if (tstate != eDeleted) {
       stat = osOK;
-      vTaskDelete(hTask);
+      vTaskDelete (hTask);
     } else {
       stat = osErrorResource;
     }
@@ -596,7 +597,7 @@ osStatus_t osThreadTerminate(osThreadId_t thread_id) {
   return (stat);
 }
 
-uint32_t osThreadGetCount(void) {
+uint32_t osThreadGetCount (void) {
   uint32_t count;
 
   if (IS_IRQ()) {
@@ -608,7 +609,7 @@ uint32_t osThreadGetCount(void) {
   return (count);
 }
 
-uint32_t osThreadEnumerate(osThreadId_t *thread_array, uint32_t array_items) {
+uint32_t osThreadEnumerate (osThreadId_t *thread_array, uint32_t array_items) {
   uint32_t i, count;
   TaskStatus_t *task;
 
@@ -618,10 +619,10 @@ uint32_t osThreadEnumerate(osThreadId_t *thread_array, uint32_t array_items) {
     vTaskSuspendAll();
 
     count = uxTaskGetNumberOfTasks();
-    task = pvPortMalloc(count * sizeof(TaskStatus_t));
+    task  = pvPortMalloc (count * sizeof(TaskStatus_t));
 
     if (task != NULL) {
-      count = uxTaskGetSystemState(task, count, NULL);
+      count = uxTaskGetSystemState (task, count, NULL);
 
       for (i = 0U; (i < count) && (i < array_items); i++) {
         thread_array[i] = (osThreadId_t)task[i].xHandle;
@@ -630,57 +631,62 @@ uint32_t osThreadEnumerate(osThreadId_t *thread_array, uint32_t array_items) {
     }
     (void)xTaskResumeAll();
 
-    vPortFree(task);
+    vPortFree (task);
   }
 
   return (count);
 }
 
-uint32_t osThreadFlagsSet(osThreadId_t thread_id, uint32_t flags) {
+uint32_t osThreadFlagsSet (osThreadId_t thread_id, uint32_t flags) {
   TaskHandle_t hTask = (TaskHandle_t)thread_id;
   uint32_t rflags;
   BaseType_t yield;
 
   if ((hTask == NULL) || ((flags & THREAD_FLAGS_INVALID_BITS) != 0U)) {
     rflags = (uint32_t)osErrorParameter;
-  } else {
+  }
+  else {
     rflags = (uint32_t)osError;
 
     if (IS_IRQ()) {
       yield = pdFALSE;
 
-      (void)xTaskNotifyFromISR(hTask, flags, eSetBits, &yield);
-      (void)xTaskNotifyAndQueryFromISR(hTask, 0, eNoAction, &rflags, NULL);
+      (void)xTaskNotifyFromISR (hTask, flags, eSetBits, &yield);
+      (void)xTaskNotifyAndQueryFromISR (hTask, 0, eNoAction, &rflags, NULL);
 
-      portYIELD_FROM_ISR(yield);
-    } else {
-      (void)xTaskNotify(hTask, flags, eSetBits);
-      (void)xTaskNotifyAndQuery(hTask, 0, eNoAction, &rflags);
+      portYIELD_FROM_ISR (yield);
+    }
+    else {
+      (void)xTaskNotify (hTask, flags, eSetBits);
+      (void)xTaskNotifyAndQuery (hTask, 0, eNoAction, &rflags);
     }
   }
   /* Return flags after setting */
   return (rflags);
 }
 
-uint32_t osThreadFlagsClear(uint32_t flags) {
+uint32_t osThreadFlagsClear (uint32_t flags) {
   TaskHandle_t hTask;
   uint32_t rflags, cflags;
 
   if (IS_IRQ()) {
     rflags = (uint32_t)osErrorISR;
-  } else if ((flags & THREAD_FLAGS_INVALID_BITS) != 0U) {
+  }
+  else if ((flags & THREAD_FLAGS_INVALID_BITS) != 0U) {
     rflags = (uint32_t)osErrorParameter;
-  } else {
+  }
+  else {
     hTask = xTaskGetCurrentTaskHandle();
 
-    if (xTaskNotifyAndQuery(hTask, 0, eNoAction, &cflags) == pdPASS) {
+    if (xTaskNotifyAndQuery (hTask, 0, eNoAction, &cflags) == pdPASS) {
       rflags = cflags;
       cflags &= ~flags;
 
-      if (xTaskNotify(hTask, cflags, eSetValueWithOverwrite) != pdPASS) {
+      if (xTaskNotify (hTask, cflags, eSetValueWithOverwrite) != pdPASS) {
         rflags = (uint32_t)osError;
       }
-    } else {
+    }
+    else {
       rflags = (uint32_t)osError;
     }
   }
@@ -689,16 +695,17 @@ uint32_t osThreadFlagsClear(uint32_t flags) {
   return (rflags);
 }
 
-uint32_t osThreadFlagsGet(void) {
+uint32_t osThreadFlagsGet (void) {
   TaskHandle_t hTask;
   uint32_t rflags;
 
   if (IS_IRQ()) {
     rflags = (uint32_t)osErrorISR;
-  } else {
+  }
+  else {
     hTask = xTaskGetCurrentTaskHandle();
 
-    if (xTaskNotifyAndQuery(hTask, 0, eNoAction, &rflags) != pdPASS) {
+    if (xTaskNotifyAndQuery (hTask, 0, eNoAction, &rflags) != pdPASS) {
       rflags = (uint32_t)osError;
     }
   }
@@ -706,7 +713,7 @@ uint32_t osThreadFlagsGet(void) {
   return (rflags);
 }
 
-uint32_t osThreadFlagsWait(uint32_t flags, uint32_t options, uint32_t timeout) {
+uint32_t osThreadFlagsWait (uint32_t flags, uint32_t options, uint32_t timeout) {
   uint32_t rflags, nval;
   uint32_t clear;
   TickType_t t0, td, tout;
@@ -714,9 +721,11 @@ uint32_t osThreadFlagsWait(uint32_t flags, uint32_t options, uint32_t timeout) {
 
   if (IS_IRQ()) {
     rflags = (uint32_t)osErrorISR;
-  } else if ((flags & THREAD_FLAGS_INVALID_BITS) != 0U) {
+  }
+  else if ((flags & THREAD_FLAGS_INVALID_BITS) != 0U) {
     rflags = (uint32_t)osErrorParameter;
-  } else {
+  }
+  else {
     if ((options & osFlagsNoClear) == osFlagsNoClear) {
       clear = 0U;
     } else {
@@ -724,11 +733,11 @@ uint32_t osThreadFlagsWait(uint32_t flags, uint32_t options, uint32_t timeout) {
     }
 
     rflags = 0U;
-    tout = timeout;
+    tout   = timeout;
 
     t0 = xTaskGetTickCount();
     do {
-      rval = xTaskNotifyWait(0, clear, &nval, tout);
+      rval = xTaskNotifyWait (0, clear, &nval, tout);
 
       if (rval == pdPASS) {
         rflags &= flags;
@@ -743,7 +752,8 @@ uint32_t osThreadFlagsWait(uint32_t flags, uint32_t options, uint32_t timeout) {
               break;
             }
           }
-        } else {
+        }
+        else {
           if ((flags & rflags) != 0) {
             break;
           } else {
@@ -758,30 +768,33 @@ uint32_t osThreadFlagsWait(uint32_t flags, uint32_t options, uint32_t timeout) {
         td = xTaskGetTickCount() - t0;
 
         if (td > tout) {
-          tout = 0;
+          tout  = 0;
         } else {
           tout -= td;
         }
-      } else {
+      }
+      else {
         if (timeout == 0) {
           rflags = (uint32_t)osErrorResource;
         } else {
           rflags = (uint32_t)osErrorTimeout;
         }
       }
-    } while (rval != pdFAIL);
+    }
+    while (rval != pdFAIL);
   }
 
   /* Return flags before clearing */
   return (rflags);
 }
 
-osStatus_t osDelay(uint32_t ticks) {
+osStatus_t osDelay (uint32_t ticks) {
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else {
+  }
+  else {
     stat = osOK;
 
     if (ticks != 0U) {
@@ -792,17 +805,18 @@ osStatus_t osDelay(uint32_t ticks) {
   return (stat);
 }
 
-osStatus_t osDelayUntil(uint32_t ticks) {
+osStatus_t osDelayUntil (uint32_t ticks) {
   TickType_t tcnt;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else {
+  }
+  else {
     stat = osOK;
     tcnt = xTaskGetTickCount();
 
-    vTaskDelayUntil(&tcnt, (TickType_t)(ticks - tcnt));
+    vTaskDelayUntil (&tcnt, (TickType_t)(ticks - tcnt));
   }
 
   return (stat);
@@ -810,18 +824,17 @@ osStatus_t osDelayUntil(uint32_t ticks) {
 
 /*---------------------------------------------------------------------------*/
 
-static void TimerCallback(TimerHandle_t hTimer) {
+static void TimerCallback (TimerHandle_t hTimer) {
   TimerCallback_t *callb;
 
-  callb = (TimerCallback_t *)pvTimerGetTimerID(hTimer);
+  callb = (TimerCallback_t *)pvTimerGetTimerID (hTimer);
 
   if (callb != NULL) {
-    callb->func(callb->arg);
+    callb->func (callb->arg);
   }
 }
 
-osTimerId_t osTimerNew(osTimerFunc_t func, osTimerType_t type, void *argument,
-                       const osTimerAttr_t *attr) {
+osTimerId_t osTimerNew (osTimerFunc_t func, osTimerType_t type, void *argument, const osTimerAttr_t *attr) {
   const char *name;
   TimerHandle_t hTimer;
   TimerCallback_t *callb;
@@ -832,11 +845,11 @@ osTimerId_t osTimerNew(osTimerFunc_t func, osTimerType_t type, void *argument,
 
   if (!IS_IRQ() && (func != NULL)) {
     /* Allocate memory to store callback function and argument */
-    callb = pvPortMalloc(sizeof(TimerCallback_t));
+    callb = pvPortMalloc (sizeof(TimerCallback_t));
 
     if (callb != NULL) {
       callb->func = func;
-      callb->arg = argument;
+      callb->arg  = argument;
 
       if (type == osTimerOnce) {
         reload = pdFALSE;
@@ -844,7 +857,7 @@ osTimerId_t osTimerNew(osTimerFunc_t func, osTimerType_t type, void *argument,
         reload = pdTRUE;
       }
 
-      mem = -1;
+      mem  = -1;
       name = NULL;
 
       if (attr != NULL) {
@@ -852,24 +865,25 @@ osTimerId_t osTimerNew(osTimerFunc_t func, osTimerType_t type, void *argument,
           name = attr->name;
         }
 
-        if ((attr->cb_mem != NULL) &&
-            (attr->cb_size >= sizeof(StaticTimer_t))) {
+        if ((attr->cb_mem != NULL) && (attr->cb_size >= sizeof(StaticTimer_t))) {
           mem = 1;
-        } else {
+        }
+        else {
           if ((attr->cb_mem == NULL) && (attr->cb_size == 0U)) {
             mem = 0;
           }
         }
-      } else {
+      }
+      else {
         mem = 0;
       }
 
       if (mem == 1) {
-        hTimer = xTimerCreateStatic(name, 1, reload, callb, TimerCallback,
-                                    (StaticTimer_t *)attr->cb_mem);
-      } else {
+        hTimer = xTimerCreateStatic (name, 1, reload, callb, TimerCallback, (StaticTimer_t *)attr->cb_mem);
+      }
+      else {
         if (mem == 0) {
-          hTimer = xTimerCreate(name, 1, reload, callb, TimerCallback);
+          hTimer = xTimerCreate (name, 1, reload, callb, TimerCallback);
         }
       }
     }
@@ -878,29 +892,31 @@ osTimerId_t osTimerNew(osTimerFunc_t func, osTimerType_t type, void *argument,
   return ((osTimerId_t)hTimer);
 }
 
-const char *osTimerGetName(osTimerId_t timer_id) {
+const char *osTimerGetName (osTimerId_t timer_id) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   const char *p;
 
   if (IS_IRQ() || (hTimer == NULL)) {
     p = NULL;
   } else {
-    p = pcTimerGetName(hTimer);
+    p = pcTimerGetName (hTimer);
   }
 
   return (p);
 }
 
-osStatus_t osTimerStart(osTimerId_t timer_id, uint32_t ticks) {
+osStatus_t osTimerStart (osTimerId_t timer_id, uint32_t ticks) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hTimer == NULL) {
+  }
+  else if (hTimer == NULL) {
     stat = osErrorParameter;
-  } else {
-    if (xTimerChangePeriod(hTimer, ticks, 0) == pdPASS) {
+  }
+  else {
+    if (xTimerChangePeriod (hTimer, ticks, 0) == pdPASS) {
       stat = osOK;
     } else {
       stat = osErrorResource;
@@ -910,19 +926,22 @@ osStatus_t osTimerStart(osTimerId_t timer_id, uint32_t ticks) {
   return (stat);
 }
 
-osStatus_t osTimerStop(osTimerId_t timer_id) {
+osStatus_t osTimerStop (osTimerId_t timer_id) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hTimer == NULL) {
+  }
+  else if (hTimer == NULL) {
     stat = osErrorParameter;
-  } else {
-    if (xTimerIsTimerActive(hTimer) == pdFALSE) {
+  }
+  else {
+    if (xTimerIsTimerActive (hTimer) == pdFALSE) {
       stat = osErrorResource;
-    } else {
-      if (xTimerStop(hTimer, 0) == pdPASS) {
+    }
+    else {
+      if (xTimerStop (hTimer, 0) == pdPASS) {
         stat = osOK;
       } else {
         stat = osError;
@@ -933,20 +952,20 @@ osStatus_t osTimerStop(osTimerId_t timer_id) {
   return (stat);
 }
 
-uint32_t osTimerIsRunning(osTimerId_t timer_id) {
+uint32_t osTimerIsRunning (osTimerId_t timer_id) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   uint32_t running;
 
   if (IS_IRQ() || (hTimer == NULL)) {
     running = 0U;
   } else {
-    running = (uint32_t)xTimerIsTimerActive(hTimer);
+    running = (uint32_t)xTimerIsTimerActive (hTimer);
   }
 
   return (running);
 }
 
-osStatus_t osTimerDelete(osTimerId_t timer_id) {
+osStatus_t osTimerDelete (osTimerId_t timer_id) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   osStatus_t stat;
 #ifndef USE_FreeRTOS_HEAP_1
@@ -954,13 +973,15 @@ osStatus_t osTimerDelete(osTimerId_t timer_id) {
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hTimer == NULL) {
+  }
+  else if (hTimer == NULL) {
     stat = osErrorParameter;
-  } else {
-    callb = (TimerCallback_t *)pvTimerGetTimerID(hTimer);
+  }
+  else {
+    callb = (TimerCallback_t *)pvTimerGetTimerID (hTimer);
 
-    if (xTimerDelete(hTimer, 0) == pdPASS) {
-      vPortFree(callb);
+    if (xTimerDelete (hTimer, 0) == pdPASS) {
+      vPortFree (callb);
       stat = osOK;
     } else {
       stat = osErrorResource;
@@ -975,7 +996,7 @@ osStatus_t osTimerDelete(osTimerId_t timer_id) {
 
 /*---------------------------------------------------------------------------*/
 
-osEventFlagsId_t osEventFlagsNew(const osEventFlagsAttr_t *attr) {
+osEventFlagsId_t osEventFlagsNew (const osEventFlagsAttr_t *attr) {
   EventGroupHandle_t hEventGroup;
   int32_t mem;
 
@@ -985,21 +1006,23 @@ osEventFlagsId_t osEventFlagsNew(const osEventFlagsAttr_t *attr) {
     mem = -1;
 
     if (attr != NULL) {
-      if ((attr->cb_mem != NULL) &&
-          (attr->cb_size >= sizeof(StaticEventGroup_t))) {
+      if ((attr->cb_mem != NULL) && (attr->cb_size >= sizeof(StaticEventGroup_t))) {
         mem = 1;
-      } else {
+      }
+      else {
         if ((attr->cb_mem == NULL) && (attr->cb_size == 0U)) {
           mem = 0;
         }
       }
-    } else {
+    }
+    else {
       mem = 0;
     }
 
     if (mem == 1) {
-      hEventGroup = xEventGroupCreateStatic(attr->cb_mem);
-    } else {
+      hEventGroup = xEventGroupCreateStatic (attr->cb_mem);
+    }
+    else {
       if (mem == 0) {
         hEventGroup = xEventGroupCreate();
       }
@@ -1009,67 +1032,70 @@ osEventFlagsId_t osEventFlagsNew(const osEventFlagsAttr_t *attr) {
   return ((osEventFlagsId_t)hEventGroup);
 }
 
-uint32_t osEventFlagsSet(osEventFlagsId_t ef_id, uint32_t flags) {
+uint32_t osEventFlagsSet (osEventFlagsId_t ef_id, uint32_t flags) {
   EventGroupHandle_t hEventGroup = (EventGroupHandle_t)ef_id;
   uint32_t rflags;
   BaseType_t yield;
 
   if ((hEventGroup == NULL) || ((flags & EVENT_FLAGS_INVALID_BITS) != 0U)) {
     rflags = (uint32_t)osErrorParameter;
-  } else if (IS_IRQ()) {
+  }
+  else if (IS_IRQ()) {
     yield = pdFALSE;
 
-    if (xEventGroupSetBitsFromISR(hEventGroup, (EventBits_t)flags, &yield) !=
-        pdFAIL) {
+    if (xEventGroupSetBitsFromISR (hEventGroup, (EventBits_t)flags, &yield) != pdFAIL) {
       rflags = (uint32_t)osErrorResource;
     } else {
       rflags = flags;
-      portYIELD_FROM_ISR(yield);
+      portYIELD_FROM_ISR (yield);
     }
-  } else {
-    rflags = xEventGroupSetBits(hEventGroup, (EventBits_t)flags);
+  }
+  else {
+    rflags = xEventGroupSetBits (hEventGroup, (EventBits_t)flags);
   }
 
   return (rflags);
 }
 
-uint32_t osEventFlagsClear(osEventFlagsId_t ef_id, uint32_t flags) {
+uint32_t osEventFlagsClear (osEventFlagsId_t ef_id, uint32_t flags) {
   EventGroupHandle_t hEventGroup = (EventGroupHandle_t)ef_id;
   uint32_t rflags;
 
   if ((hEventGroup == NULL) || ((flags & EVENT_FLAGS_INVALID_BITS) != 0U)) {
     rflags = (uint32_t)osErrorParameter;
-  } else if (IS_IRQ()) {
-    rflags = xEventGroupGetBitsFromISR(hEventGroup);
+  }
+  else if (IS_IRQ()) {
+    rflags = xEventGroupGetBitsFromISR (hEventGroup);
 
-    if (xEventGroupClearBitsFromISR(hEventGroup, (EventBits_t)flags) ==
-        pdFAIL) {
+    if (xEventGroupClearBitsFromISR (hEventGroup, (EventBits_t)flags) == pdFAIL) {
       rflags = (uint32_t)osErrorResource;
     }
-  } else {
-    rflags = xEventGroupClearBits(hEventGroup, (EventBits_t)flags);
+  }
+  else {
+    rflags = xEventGroupClearBits (hEventGroup, (EventBits_t)flags);
   }
 
   return (rflags);
 }
 
-uint32_t osEventFlagsGet(osEventFlagsId_t ef_id) {
+uint32_t osEventFlagsGet (osEventFlagsId_t ef_id) {
   EventGroupHandle_t hEventGroup = (EventGroupHandle_t)ef_id;
   uint32_t rflags;
 
   if (ef_id == NULL) {
     rflags = 0U;
-  } else if (IS_IRQ()) {
-    rflags = xEventGroupGetBitsFromISR(hEventGroup);
-  } else {
-    rflags = xEventGroupGetBits(hEventGroup);
+  }
+  else if (IS_IRQ()) {
+    rflags = xEventGroupGetBitsFromISR (hEventGroup);
+  }
+  else {
+    rflags = xEventGroupGetBits (hEventGroup);
   }
 
   return (rflags);
 }
 
-uint32_t osEventFlagsWait(osEventFlagsId_t ef_id, uint32_t flags,
-                          uint32_t options, uint32_t timeout) {
+uint32_t osEventFlagsWait (osEventFlagsId_t ef_id, uint32_t flags, uint32_t options, uint32_t timeout) {
   EventGroupHandle_t hEventGroup = (EventGroupHandle_t)ef_id;
   BaseType_t wait_all;
   BaseType_t exit_clr;
@@ -1077,9 +1103,11 @@ uint32_t osEventFlagsWait(osEventFlagsId_t ef_id, uint32_t flags,
 
   if ((hEventGroup == NULL) || ((flags & EVENT_FLAGS_INVALID_BITS) != 0U)) {
     rflags = (uint32_t)osErrorParameter;
-  } else if (IS_IRQ()) {
+  }
+  else if (IS_IRQ()) {
     rflags = (uint32_t)osErrorISR;
-  } else {
+  }
+  else {
     if (options & osFlagsWaitAll) {
       wait_all = pdTRUE;
     } else {
@@ -1092,8 +1120,7 @@ uint32_t osEventFlagsWait(osEventFlagsId_t ef_id, uint32_t flags,
       exit_clr = pdTRUE;
     }
 
-    rflags = xEventGroupWaitBits(hEventGroup, (EventBits_t)flags, exit_clr,
-                                 wait_all, (TickType_t)timeout);
+    rflags = xEventGroupWaitBits (hEventGroup, (EventBits_t)flags, exit_clr, wait_all, (TickType_t)timeout);
 
     if (options & osFlagsWaitAll) {
       if (flags != rflags) {
@@ -1103,7 +1130,8 @@ uint32_t osEventFlagsWait(osEventFlagsId_t ef_id, uint32_t flags,
           rflags = (uint32_t)osErrorResource;
         }
       }
-    } else {
+    }
+    else {
       if ((flags & rflags) == 0U) {
         if (timeout > 0U) {
           rflags = (uint32_t)osErrorTimeout;
@@ -1117,18 +1145,20 @@ uint32_t osEventFlagsWait(osEventFlagsId_t ef_id, uint32_t flags,
   return (rflags);
 }
 
-osStatus_t osEventFlagsDelete(osEventFlagsId_t ef_id) {
+osStatus_t osEventFlagsDelete (osEventFlagsId_t ef_id) {
   EventGroupHandle_t hEventGroup = (EventGroupHandle_t)ef_id;
   osStatus_t stat;
 
 #ifndef USE_FreeRTOS_HEAP_1
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hEventGroup == NULL) {
+  }
+  else if (hEventGroup == NULL) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     stat = osOK;
-    vEventGroupDelete(hEventGroup);
+    vEventGroupDelete (hEventGroup);
   }
 #else
   stat = osError;
@@ -1139,14 +1169,14 @@ osStatus_t osEventFlagsDelete(osEventFlagsId_t ef_id) {
 
 /*---------------------------------------------------------------------------*/
 
-osMutexId_t osMutexNew(const osMutexAttr_t *attr) {
+osMutexId_t osMutexNew (const osMutexAttr_t *attr) {
   SemaphoreHandle_t hMutex;
   uint32_t type;
   uint32_t rmtx;
-  int32_t mem;
-#if (configQUEUE_REGISTRY_SIZE > 0)
+  int32_t  mem;
+  #if (configQUEUE_REGISTRY_SIZE > 0)
   const char *name;
-#endif
+  #endif
 
   hMutex = NULL;
 
@@ -1167,44 +1197,47 @@ osMutexId_t osMutexNew(const osMutexAttr_t *attr) {
       mem = -1;
 
       if (attr != NULL) {
-        if ((attr->cb_mem != NULL) &&
-            (attr->cb_size >= sizeof(StaticSemaphore_t))) {
+        if ((attr->cb_mem != NULL) && (attr->cb_size >= sizeof(StaticSemaphore_t))) {
           mem = 1;
-        } else {
+        }
+        else {
           if ((attr->cb_mem == NULL) && (attr->cb_size == 0U)) {
             mem = 0;
           }
         }
-      } else {
+      }
+      else {
         mem = 0;
       }
 
       if (mem == 1) {
         if (rmtx != 0U) {
-          hMutex = xSemaphoreCreateRecursiveMutexStatic(attr->cb_mem);
-        } else {
-          hMutex = xSemaphoreCreateMutexStatic(attr->cb_mem);
+          hMutex = xSemaphoreCreateRecursiveMutexStatic (attr->cb_mem);
         }
-      } else {
+        else {
+          hMutex = xSemaphoreCreateMutexStatic (attr->cb_mem);
+        }
+      }
+      else {
         if (mem == 0) {
           if (rmtx != 0U) {
-            hMutex = xSemaphoreCreateRecursiveMutex();
+            hMutex = xSemaphoreCreateRecursiveMutex ();
           } else {
-            hMutex = xSemaphoreCreateMutex();
+            hMutex = xSemaphoreCreateMutex ();
           }
         }
       }
 
-#if (configQUEUE_REGISTRY_SIZE > 0)
+      #if (configQUEUE_REGISTRY_SIZE > 0)
       if (hMutex != NULL) {
         if (attr != NULL) {
           name = attr->name;
         } else {
           name = NULL;
         }
-        vQueueAddToRegistry(hMutex, name);
+        vQueueAddToRegistry (hMutex, name);
       }
-#endif
+      #endif
 
       if ((hMutex != NULL) && (rmtx != 0U)) {
         hMutex = (SemaphoreHandle_t)((uint32_t)hMutex | 1U);
@@ -1215,7 +1248,7 @@ osMutexId_t osMutexNew(const osMutexAttr_t *attr) {
   return ((osMutexId_t)hMutex);
 }
 
-osStatus_t osMutexAcquire(osMutexId_t mutex_id, uint32_t timeout) {
+osStatus_t osMutexAcquire (osMutexId_t mutex_id, uint32_t timeout) {
   SemaphoreHandle_t hMutex;
   osStatus_t stat;
   uint32_t rmtx;
@@ -1228,19 +1261,22 @@ osStatus_t osMutexAcquire(osMutexId_t mutex_id, uint32_t timeout) {
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hMutex == NULL) {
+  }
+  else if (hMutex == NULL) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     if (rmtx != 0U) {
-      if (xSemaphoreTakeRecursive(hMutex, timeout) != pdPASS) {
+      if (xSemaphoreTakeRecursive (hMutex, timeout) != pdPASS) {
         if (timeout != 0U) {
           stat = osErrorTimeout;
         } else {
           stat = osErrorResource;
         }
       }
-    } else {
-      if (xSemaphoreTake(hMutex, timeout) != pdPASS) {
+    }
+    else {
+      if (xSemaphoreTake (hMutex, timeout) != pdPASS) {
         if (timeout != 0U) {
           stat = osErrorTimeout;
         } else {
@@ -1253,7 +1289,7 @@ osStatus_t osMutexAcquire(osMutexId_t mutex_id, uint32_t timeout) {
   return (stat);
 }
 
-osStatus_t osMutexRelease(osMutexId_t mutex_id) {
+osStatus_t osMutexRelease (osMutexId_t mutex_id) {
   SemaphoreHandle_t hMutex;
   osStatus_t stat;
   uint32_t rmtx;
@@ -1266,15 +1302,18 @@ osStatus_t osMutexRelease(osMutexId_t mutex_id) {
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hMutex == NULL) {
+  }
+  else if (hMutex == NULL) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     if (rmtx != 0U) {
-      if (xSemaphoreGiveRecursive(hMutex) != pdPASS) {
+      if (xSemaphoreGiveRecursive (hMutex) != pdPASS) {
         stat = osErrorResource;
       }
-    } else {
-      if (xSemaphoreGive(hMutex) != pdPASS) {
+    }
+    else {
+      if (xSemaphoreGive (hMutex) != pdPASS) {
         stat = osErrorResource;
       }
     }
@@ -1283,7 +1322,7 @@ osStatus_t osMutexRelease(osMutexId_t mutex_id) {
   return (stat);
 }
 
-osThreadId_t osMutexGetOwner(osMutexId_t mutex_id) {
+osThreadId_t osMutexGetOwner (osMutexId_t mutex_id) {
   SemaphoreHandle_t hMutex;
   osThreadId_t owner;
 
@@ -1292,13 +1331,13 @@ osThreadId_t osMutexGetOwner(osMutexId_t mutex_id) {
   if (IS_IRQ() || (hMutex == NULL)) {
     owner = NULL;
   } else {
-    owner = (osThreadId_t)xSemaphoreGetMutexHolder(hMutex);
+    owner = (osThreadId_t)xSemaphoreGetMutexHolder (hMutex);
   }
 
   return (owner);
 }
 
-osStatus_t osMutexDelete(osMutexId_t mutex_id) {
+osStatus_t osMutexDelete (osMutexId_t mutex_id) {
   osStatus_t stat;
 #ifndef USE_FreeRTOS_HEAP_1
   SemaphoreHandle_t hMutex;
@@ -1307,14 +1346,16 @@ osStatus_t osMutexDelete(osMutexId_t mutex_id) {
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hMutex == NULL) {
+  }
+  else if (hMutex == NULL) {
     stat = osErrorParameter;
-  } else {
-#if (configQUEUE_REGISTRY_SIZE > 0)
-    vQueueUnregisterQueue(hMutex);
-#endif
+  }
+  else {
+    #if (configQUEUE_REGISTRY_SIZE > 0)
+    vQueueUnregisterQueue (hMutex);
+    #endif
     stat = osOK;
-    vSemaphoreDelete(hMutex);
+    vSemaphoreDelete (hMutex);
   }
 #else
   stat = osError;
@@ -1325,13 +1366,12 @@ osStatus_t osMutexDelete(osMutexId_t mutex_id) {
 
 /*---------------------------------------------------------------------------*/
 
-osSemaphoreId_t osSemaphoreNew(uint32_t max_count, uint32_t initial_count,
-                               const osSemaphoreAttr_t *attr) {
+osSemaphoreId_t osSemaphoreNew (uint32_t max_count, uint32_t initial_count, const osSemaphoreAttr_t *attr) {
   SemaphoreHandle_t hSemaphore;
   int32_t mem;
-#if (configQUEUE_REGISTRY_SIZE > 0)
+  #if (configQUEUE_REGISTRY_SIZE > 0)
   const char *name;
-#endif
+  #endif
 
   hSemaphore = NULL;
 
@@ -1339,59 +1379,61 @@ osSemaphoreId_t osSemaphoreNew(uint32_t max_count, uint32_t initial_count,
     mem = -1;
 
     if (attr != NULL) {
-      if ((attr->cb_mem != NULL) &&
-          (attr->cb_size >= sizeof(StaticSemaphore_t))) {
+      if ((attr->cb_mem != NULL) && (attr->cb_size >= sizeof(StaticSemaphore_t))) {
         mem = 1;
-      } else {
+      }
+      else {
         if ((attr->cb_mem == NULL) && (attr->cb_size == 0U)) {
           mem = 0;
         }
       }
-    } else {
+    }
+    else {
       mem = 0;
     }
 
     if (mem != -1) {
       if (max_count == 1U) {
         if (mem == 1) {
-          hSemaphore =
-              xSemaphoreCreateBinaryStatic((StaticSemaphore_t *)attr->cb_mem);
-        } else {
+          hSemaphore = xSemaphoreCreateBinaryStatic ((StaticSemaphore_t *)attr->cb_mem);
+        }
+        else {
           hSemaphore = xSemaphoreCreateBinary();
         }
 
         if ((hSemaphore != NULL) && (initial_count != 0U)) {
-          if (xSemaphoreGive(hSemaphore) != pdPASS) {
-            vSemaphoreDelete(hSemaphore);
+          if (xSemaphoreGive (hSemaphore) != pdPASS) {
+            vSemaphoreDelete (hSemaphore);
             hSemaphore = NULL;
           }
         }
-      } else {
+      }
+      else {
         if (mem == 1) {
-          hSemaphore = xSemaphoreCreateCountingStatic(
-              max_count, initial_count, (StaticSemaphore_t *)attr->cb_mem);
-        } else {
-          hSemaphore = xSemaphoreCreateCounting(max_count, initial_count);
+          hSemaphore = xSemaphoreCreateCountingStatic (max_count, initial_count, (StaticSemaphore_t *)attr->cb_mem);
+        }
+        else {
+          hSemaphore = xSemaphoreCreateCounting (max_count, initial_count);
         }
       }
 
-#if (configQUEUE_REGISTRY_SIZE > 0)
+      #if (configQUEUE_REGISTRY_SIZE > 0)
       if (hSemaphore != NULL) {
         if (attr != NULL) {
           name = attr->name;
         } else {
           name = NULL;
         }
-        vQueueAddToRegistry(hSemaphore, name);
+        vQueueAddToRegistry (hSemaphore, name);
       }
-#endif
+      #endif
     }
   }
 
   return ((osSemaphoreId_t)hSemaphore);
 }
 
-osStatus_t osSemaphoreAcquire(osSemaphoreId_t semaphore_id, uint32_t timeout) {
+osStatus_t osSemaphoreAcquire (osSemaphoreId_t semaphore_id, uint32_t timeout) {
   SemaphoreHandle_t hSemaphore = (SemaphoreHandle_t)semaphore_id;
   osStatus_t stat;
   BaseType_t yield;
@@ -1400,20 +1442,23 @@ osStatus_t osSemaphoreAcquire(osSemaphoreId_t semaphore_id, uint32_t timeout) {
 
   if (hSemaphore == NULL) {
     stat = osErrorParameter;
-  } else if (IS_IRQ()) {
+  }
+  else if (IS_IRQ()) {
     if (timeout != 0U) {
       stat = osErrorParameter;
-    } else {
+    }
+    else {
       yield = pdFALSE;
 
-      if (xSemaphoreTakeFromISR(hSemaphore, &yield) != pdPASS) {
+      if (xSemaphoreTakeFromISR (hSemaphore, &yield) != pdPASS) {
         stat = osErrorResource;
       } else {
-        portYIELD_FROM_ISR(yield);
+        portYIELD_FROM_ISR (yield);
       }
     }
-  } else {
-    if (xSemaphoreTake(hSemaphore, (TickType_t)timeout) != pdPASS) {
+  }
+  else {
+    if (xSemaphoreTake (hSemaphore, (TickType_t)timeout) != pdPASS) {
       if (timeout != 0U) {
         stat = osErrorTimeout;
       } else {
@@ -1425,7 +1470,7 @@ osStatus_t osSemaphoreAcquire(osSemaphoreId_t semaphore_id, uint32_t timeout) {
   return (stat);
 }
 
-osStatus_t osSemaphoreRelease(osSemaphoreId_t semaphore_id) {
+osStatus_t osSemaphoreRelease (osSemaphoreId_t semaphore_id) {
   SemaphoreHandle_t hSemaphore = (SemaphoreHandle_t)semaphore_id;
   osStatus_t stat;
   BaseType_t yield;
@@ -1434,16 +1479,18 @@ osStatus_t osSemaphoreRelease(osSemaphoreId_t semaphore_id) {
 
   if (hSemaphore == NULL) {
     stat = osErrorParameter;
-  } else if (IS_IRQ()) {
+  }
+  else if (IS_IRQ()) {
     yield = pdFALSE;
 
-    if (xSemaphoreGiveFromISR(hSemaphore, &yield) != pdTRUE) {
+    if (xSemaphoreGiveFromISR (hSemaphore, &yield) != pdTRUE) {
       stat = osErrorResource;
     } else {
-      portYIELD_FROM_ISR(yield);
+      portYIELD_FROM_ISR (yield);
     }
-  } else {
-    if (xSemaphoreGive(hSemaphore) != pdPASS) {
+  }
+  else {
+    if (xSemaphoreGive (hSemaphore) != pdPASS) {
       stat = osErrorResource;
     }
   }
@@ -1451,37 +1498,40 @@ osStatus_t osSemaphoreRelease(osSemaphoreId_t semaphore_id) {
   return (stat);
 }
 
-uint32_t osSemaphoreGetCount(osSemaphoreId_t semaphore_id) {
+uint32_t osSemaphoreGetCount (osSemaphoreId_t semaphore_id) {
   SemaphoreHandle_t hSemaphore = (SemaphoreHandle_t)semaphore_id;
   uint32_t count;
 
   if (hSemaphore == NULL) {
     count = 0U;
-  } else if (IS_IRQ()) {
-    count = uxQueueMessagesWaitingFromISR(hSemaphore);
+  }
+  else if (IS_IRQ()) {
+    count = uxQueueMessagesWaitingFromISR (hSemaphore);
   } else {
-    count = (uint32_t)uxSemaphoreGetCount(hSemaphore);
+    count = (uint32_t)uxSemaphoreGetCount (hSemaphore);
   }
 
   return (count);
 }
 
-osStatus_t osSemaphoreDelete(osSemaphoreId_t semaphore_id) {
+osStatus_t osSemaphoreDelete (osSemaphoreId_t semaphore_id) {
   SemaphoreHandle_t hSemaphore = (SemaphoreHandle_t)semaphore_id;
   osStatus_t stat;
 
 #ifndef USE_FreeRTOS_HEAP_1
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hSemaphore == NULL) {
+  }
+  else if (hSemaphore == NULL) {
     stat = osErrorParameter;
-  } else {
-#if (configQUEUE_REGISTRY_SIZE > 0)
-    vQueueUnregisterQueue(hSemaphore);
-#endif
+  }
+  else {
+    #if (configQUEUE_REGISTRY_SIZE > 0)
+    vQueueUnregisterQueue (hSemaphore);
+    #endif
 
     stat = osOK;
-    vSemaphoreDelete(hSemaphore);
+    vSemaphoreDelete (hSemaphore);
   }
 #else
   stat = osError;
@@ -1492,13 +1542,12 @@ osStatus_t osSemaphoreDelete(osSemaphoreId_t semaphore_id) {
 
 /*---------------------------------------------------------------------------*/
 
-osMessageQueueId_t osMessageQueueNew(uint32_t msg_count, uint32_t msg_size,
-                                     const osMessageQueueAttr_t *attr) {
+osMessageQueueId_t osMessageQueueNew (uint32_t msg_count, uint32_t msg_size, const osMessageQueueAttr_t *attr) {
   QueueHandle_t hQueue;
   int32_t mem;
-#if (configQUEUE_REGISTRY_SIZE > 0)
+  #if (configQUEUE_REGISTRY_SIZE > 0)
   const char *name;
-#endif
+  #endif
 
   hQueue = NULL;
 
@@ -1509,42 +1558,44 @@ osMessageQueueId_t osMessageQueueNew(uint32_t msg_count, uint32_t msg_size,
       if ((attr->cb_mem != NULL) && (attr->cb_size >= sizeof(StaticQueue_t)) &&
           (attr->mq_mem != NULL) && (attr->mq_size >= (msg_count * msg_size))) {
         mem = 1;
-      } else {
+      }
+      else {
         if ((attr->cb_mem == NULL) && (attr->cb_size == 0U) &&
             (attr->mq_mem == NULL) && (attr->mq_size == 0U)) {
           mem = 0;
         }
       }
-    } else {
+    }
+    else {
       mem = 0;
     }
 
     if (mem == 1) {
-      hQueue =
-          xQueueCreateStatic(msg_count, msg_size, attr->mq_mem, attr->cb_mem);
-    } else {
+      hQueue = xQueueCreateStatic (msg_count, msg_size, attr->mq_mem, attr->cb_mem);
+    }
+    else {
       if (mem == 0) {
-        hQueue = xQueueCreate(msg_count, msg_size);
+        hQueue = xQueueCreate (msg_count, msg_size);
       }
     }
 
-#if (configQUEUE_REGISTRY_SIZE > 0)
+    #if (configQUEUE_REGISTRY_SIZE > 0)
     if (hQueue != NULL) {
       if (attr != NULL) {
         name = attr->name;
       } else {
         name = NULL;
       }
-      vQueueAddToRegistry(hQueue, name);
+      vQueueAddToRegistry (hQueue, name);
     }
-#endif
+    #endif
+
   }
 
   return ((osMessageQueueId_t)hQueue);
 }
 
-osStatus_t osMessageQueuePut(osMessageQueueId_t mq_id, const void *msg_ptr,
-                             uint8_t msg_prio, uint32_t timeout) {
+osStatus_t osMessageQueuePut (osMessageQueueId_t mq_id, const void *msg_ptr, uint8_t msg_prio, uint32_t timeout) {
   QueueHandle_t hQueue = (QueueHandle_t)mq_id;
   osStatus_t stat;
   BaseType_t yield;
@@ -1556,20 +1607,23 @@ osStatus_t osMessageQueuePut(osMessageQueueId_t mq_id, const void *msg_ptr,
   if (IS_IRQ()) {
     if ((hQueue == NULL) || (msg_ptr == NULL) || (timeout != 0U)) {
       stat = osErrorParameter;
-    } else {
+    }
+    else {
       yield = pdFALSE;
 
-      if (xQueueSendToBackFromISR(hQueue, msg_ptr, &yield) != pdTRUE) {
+      if (xQueueSendToBackFromISR (hQueue, msg_ptr, &yield) != pdTRUE) {
         stat = osErrorResource;
       } else {
-        portYIELD_FROM_ISR(yield);
+        portYIELD_FROM_ISR (yield);
       }
     }
-  } else {
+  }
+  else {
     if ((hQueue == NULL) || (msg_ptr == NULL)) {
       stat = osErrorParameter;
-    } else {
-      if (xQueueSendToBack(hQueue, msg_ptr, (TickType_t)timeout) != pdPASS) {
+    }
+    else {
+      if (xQueueSendToBack (hQueue, msg_ptr, (TickType_t)timeout) != pdPASS) {
         if (timeout != 0U) {
           stat = osErrorTimeout;
         } else {
@@ -1582,8 +1636,7 @@ osStatus_t osMessageQueuePut(osMessageQueueId_t mq_id, const void *msg_ptr,
   return (stat);
 }
 
-osStatus_t osMessageQueueGet(osMessageQueueId_t mq_id, void *msg_ptr,
-                             uint8_t *msg_prio, uint32_t timeout) {
+osStatus_t osMessageQueueGet (osMessageQueueId_t mq_id, void *msg_ptr, uint8_t *msg_prio, uint32_t timeout) {
   QueueHandle_t hQueue = (QueueHandle_t)mq_id;
   osStatus_t stat;
   BaseType_t yield;
@@ -1595,20 +1648,23 @@ osStatus_t osMessageQueueGet(osMessageQueueId_t mq_id, void *msg_ptr,
   if (IS_IRQ()) {
     if ((hQueue == NULL) || (msg_ptr == NULL) || (timeout != 0U)) {
       stat = osErrorParameter;
-    } else {
+    }
+    else {
       yield = pdFALSE;
 
-      if (xQueueReceiveFromISR(hQueue, msg_ptr, &yield) != pdPASS) {
+      if (xQueueReceiveFromISR (hQueue, msg_ptr, &yield) != pdPASS) {
         stat = osErrorResource;
       } else {
-        portYIELD_FROM_ISR(yield);
+        portYIELD_FROM_ISR (yield);
       }
     }
-  } else {
+  }
+  else {
     if ((hQueue == NULL) || (msg_ptr == NULL)) {
       stat = osErrorParameter;
-    } else {
-      if (xQueueReceive(hQueue, msg_ptr, (TickType_t)timeout) != pdPASS) {
+    }
+    else {
+      if (xQueueReceive (hQueue, msg_ptr, (TickType_t)timeout) != pdPASS) {
         if (timeout != 0U) {
           stat = osErrorTimeout;
         } else {
@@ -1621,7 +1677,7 @@ osStatus_t osMessageQueueGet(osMessageQueueId_t mq_id, void *msg_ptr,
   return (stat);
 }
 
-uint32_t osMessageQueueGetCapacity(osMessageQueueId_t mq_id) {
+uint32_t osMessageQueueGetCapacity (osMessageQueueId_t mq_id) {
   StaticQueue_t *mq = (StaticQueue_t *)mq_id;
   uint32_t capacity;
 
@@ -1635,7 +1691,7 @@ uint32_t osMessageQueueGetCapacity(osMessageQueueId_t mq_id) {
   return (capacity);
 }
 
-uint32_t osMessageQueueGetMsgSize(osMessageQueueId_t mq_id) {
+uint32_t osMessageQueueGetMsgSize (osMessageQueueId_t mq_id) {
   StaticQueue_t *mq = (StaticQueue_t *)mq_id;
   uint32_t size;
 
@@ -1649,74 +1705,82 @@ uint32_t osMessageQueueGetMsgSize(osMessageQueueId_t mq_id) {
   return (size);
 }
 
-uint32_t osMessageQueueGetCount(osMessageQueueId_t mq_id) {
+uint32_t osMessageQueueGetCount (osMessageQueueId_t mq_id) {
   QueueHandle_t hQueue = (QueueHandle_t)mq_id;
   UBaseType_t count;
 
   if (hQueue == NULL) {
     count = 0U;
-  } else if (IS_IRQ()) {
-    count = uxQueueMessagesWaitingFromISR(hQueue);
-  } else {
-    count = uxQueueMessagesWaiting(hQueue);
+  }
+  else if (IS_IRQ()) {
+    count = uxQueueMessagesWaitingFromISR (hQueue);
+  }
+  else {
+    count = uxQueueMessagesWaiting (hQueue);
   }
 
   return ((uint32_t)count);
 }
 
-uint32_t osMessageQueueGetSpace(osMessageQueueId_t mq_id) {
+uint32_t osMessageQueueGetSpace (osMessageQueueId_t mq_id) {
   StaticQueue_t *mq = (StaticQueue_t *)mq_id;
   uint32_t space;
   uint32_t isrm;
 
   if (mq == NULL) {
     space = 0U;
-  } else if (IS_IRQ()) {
+  }
+  else if (IS_IRQ()) {
     isrm = taskENTER_CRITICAL_FROM_ISR();
 
     /* space = pxQueue->uxLength - pxQueue->uxMessagesWaiting; */
     space = mq->uxDummy4[1] - mq->uxDummy4[0];
 
     taskEXIT_CRITICAL_FROM_ISR(isrm);
-  } else {
-    space = (uint32_t)uxQueueSpacesAvailable((QueueHandle_t)mq);
+  }
+  else {
+    space = (uint32_t)uxQueueSpacesAvailable ((QueueHandle_t)mq);
   }
 
   return (space);
 }
 
-osStatus_t osMessageQueueReset(osMessageQueueId_t mq_id) {
+osStatus_t osMessageQueueReset (osMessageQueueId_t mq_id) {
   QueueHandle_t hQueue = (QueueHandle_t)mq_id;
   osStatus_t stat;
 
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hQueue == NULL) {
+  }
+  else if (hQueue == NULL) {
     stat = osErrorParameter;
-  } else {
+  }
+  else {
     stat = osOK;
-    (void)xQueueReset(hQueue);
+    (void)xQueueReset (hQueue);
   }
 
   return (stat);
 }
 
-osStatus_t osMessageQueueDelete(osMessageQueueId_t mq_id) {
+osStatus_t osMessageQueueDelete (osMessageQueueId_t mq_id) {
   QueueHandle_t hQueue = (QueueHandle_t)mq_id;
   osStatus_t stat;
 
 #ifndef USE_FreeRTOS_HEAP_1
   if (IS_IRQ()) {
     stat = osErrorISR;
-  } else if (hQueue == NULL) {
+  }
+  else if (hQueue == NULL) {
     stat = osErrorParameter;
-  } else {
-#if (configQUEUE_REGISTRY_SIZE > 0)
-    vQueueUnregisterQueue(hQueue);
-#endif
+  }
+  else {
+    #if (configQUEUE_REGISTRY_SIZE > 0)
+    vQueueUnregisterQueue (hQueue);
+    #endif
 
     stat = osOK;
-    vQueueDelete(hQueue);
+    vQueueDelete (hQueue);
   }
 #else
   stat = osError;
@@ -1728,48 +1792,45 @@ osStatus_t osMessageQueueDelete(osMessageQueueId_t mq_id) {
 /*---------------------------------------------------------------------------*/
 
 /* Callback function prototypes */
-extern void vApplicationIdleHook(void);
-extern void vApplicationTickHook(void);
-extern void vApplicationMallocFailedHook(void);
-extern void vApplicationDaemonTaskStartupHook(void);
-extern void vApplicationStackOverflowHook(TaskHandle_t xTask,
-                                          signed char *pcTaskName);
+extern void vApplicationIdleHook (void);
+extern void vApplicationTickHook (void);
+extern void vApplicationMallocFailedHook (void);
+extern void vApplicationDaemonTaskStartupHook (void);
+extern void vApplicationStackOverflowHook (TaskHandle_t xTask, signed char *pcTaskName);
 
 /**
   Dummy implementation of the callback function vApplicationIdleHook().
 */
 #if (configUSE_IDLE_HOOK == 1)
-__WEAK void vApplicationIdleHook(void) {}
+__WEAK void vApplicationIdleHook (void){}
 #endif
 
 /**
   Dummy implementation of the callback function vApplicationTickHook().
 */
 #if (configUSE_TICK_HOOK == 1)
-__WEAK void vApplicationTickHook(void) {}
+ __WEAK void vApplicationTickHook (void){}
 #endif
 
 /**
   Dummy implementation of the callback function vApplicationMallocFailedHook().
 */
 #if (configUSE_MALLOC_FAILED_HOOK == 1)
-__WEAK void vApplicationMallocFailedHook(void) {}
+__WEAK void vApplicationMallocFailedHook (void){}
 #endif
 
 /**
-  Dummy implementation of the callback function
-  vApplicationDaemonTaskStartupHook().
+  Dummy implementation of the callback function vApplicationDaemonTaskStartupHook().
 */
 #if (configUSE_DAEMON_TASK_STARTUP_HOOK == 1)
-__WEAK void vApplicationDaemonTaskStartupHook(void) {}
+__WEAK void vApplicationDaemonTaskStartupHook (void){}
 #endif
 
 /**
   Dummy implementation of the callback function vApplicationStackOverflowHook().
 */
 #if (configCHECK_FOR_STACK_OVERFLOW > 0)
-__WEAK void vApplicationStackOverflowHook(TaskHandle_t xTask,
-                                          signed char *pcTaskName) {
+__WEAK void vApplicationStackOverflowHook (TaskHandle_t xTask, signed char *pcTaskName) {
   (void)xTask;
   (void)pcTaskName;
 }
@@ -1778,43 +1839,33 @@ __WEAK void vApplicationStackOverflowHook(TaskHandle_t xTask,
 /*---------------------------------------------------------------------------*/
 
 /* External Idle and Timer task static memory allocation functions */
-extern void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
-                                          StackType_t **ppxIdleTaskStackBuffer,
-                                          uint32_t *pulIdleTaskStackSize);
-extern void
-vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
-                               StackType_t **ppxTimerTaskStackBuffer,
-                               uint32_t *pulTimerTaskStackSize);
+extern void vApplicationGetIdleTaskMemory  (StaticTask_t **ppxIdleTaskTCBBuffer,  StackType_t **ppxIdleTaskStackBuffer,  uint32_t *pulIdleTaskStackSize);
+extern void vApplicationGetTimerTaskMemory (StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize);
 
 /* Idle task control block and stack */
 static StaticTask_t Idle_TCB;
-static StackType_t Idle_Stack[configMINIMAL_STACK_SIZE];
+static StackType_t  Idle_Stack[configMINIMAL_STACK_SIZE];
 
 /* Timer task control block and stack */
 static StaticTask_t Timer_TCB;
-static StackType_t Timer_Stack[configTIMER_TASK_STACK_DEPTH];
+static StackType_t  Timer_Stack[configTIMER_TASK_STACK_DEPTH];
 
 /*
   vApplicationGetIdleTaskMemory gets called when configSUPPORT_STATIC_ALLOCATION
   equals to 1 and is required for static memory allocation support.
 */
-void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
-                                   StackType_t **ppxIdleTaskStackBuffer,
-                                   uint32_t *pulIdleTaskStackSize) {
-  *ppxIdleTaskTCBBuffer = &Idle_TCB;
+void vApplicationGetIdleTaskMemory (StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize) {
+  *ppxIdleTaskTCBBuffer   = &Idle_TCB;
   *ppxIdleTaskStackBuffer = &Idle_Stack[0];
-  *pulIdleTaskStackSize = (uint32_t)configMINIMAL_STACK_SIZE;
+  *pulIdleTaskStackSize   = (uint32_t)configMINIMAL_STACK_SIZE;
 }
 
 /*
-  vApplicationGetTimerTaskMemory gets called when
-  configSUPPORT_STATIC_ALLOCATION equals to 1 and is required for static memory
-  allocation support.
+  vApplicationGetTimerTaskMemory gets called when configSUPPORT_STATIC_ALLOCATION
+  equals to 1 and is required for static memory allocation support.
 */
-void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
-                                    StackType_t **ppxTimerTaskStackBuffer,
-                                    uint32_t *pulTimerTaskStackSize) {
-  *ppxTimerTaskTCBBuffer = &Timer_TCB;
+void vApplicationGetTimerTaskMemory (StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize) {
+  *ppxTimerTaskTCBBuffer   = &Timer_TCB;
   *ppxTimerTaskStackBuffer = &Timer_Stack[0];
-  *pulTimerTaskStackSize = (uint32_t)configTIMER_TASK_STACK_DEPTH;
+  *pulTimerTaskStackSize   = (uint32_t)configTIMER_TASK_STACK_DEPTH;
 }

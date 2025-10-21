@@ -3,17 +3,22 @@
 #include "task.h"
 #include "timers.h"
 
+#include "BufferProcess.h"
+#include "buzzer.h"
 #include "heat_task.h"
 #include "key_task.h"
+#include "led.h"
 #include "protocal_task.h"
 
 void task_init(void)
 {
+    led_init();    // 初始化LED控制器
+    buzzer_init(); // 初始化蜂鸣器
     // 创建按键扫描任务
     xTaskCreate(key_scan, "KeyScan", 128 * 2, NULL, 2, NULL);
-
-    // 启动调度器
-    vTaskStartScheduler();
+    heat_task_init();      // 初始化加热任务
+    buffer_process_init(); // 初始化缓冲处理任务
+    protocal_task_init();  // 初始化协议处理任务
 }
 
 void do_reg_change_actions(RegisterID reg, uint16_t value)

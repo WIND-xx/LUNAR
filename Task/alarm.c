@@ -1,6 +1,6 @@
 #include "alarm.h"
+#include "bsp_rtc.h"
 #include "heat_task.h" // 用于触发加热动作
-#include "rtc.h"
 #include "task.h"
 
 // 全局闹钟管理器实例

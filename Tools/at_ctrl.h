@@ -8,9 +8,7 @@ extern "C"
 #endif
 
 /*----------------------------------include-----------------------------------*/
-#include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
 /*-----------------------------------macro------------------------------------*/
 
@@ -37,7 +35,7 @@ void music_switch(void);
 void music_next(void);
 void music_prev(void);
 void music_volume_control(VOLUME_ENUM ctrl);
-void bt_mode(BTMODE_ENUM mode);
+void ble_mode(BTMODE_ENUM mode);
 void music_volume_set(uint8_t volume);
 /*------------------------------------test------------------------------------*/
 

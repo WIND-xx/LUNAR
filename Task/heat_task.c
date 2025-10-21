@@ -52,7 +52,7 @@ void heat_control_task(void *arg)
     xLastWakeTime = xTaskGetTickCount();
     PID_Controller heater_pid;
     PID_Init(&heater_pid, 10.0f, 0.1f, 4.5f, 50.0f, 0.0f, 100.0f);
-
+    heat_init(); // 初始化加热硬件
     for (;;)
     {
         // 处理消息队列（优先处理定时相关事件）

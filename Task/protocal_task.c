@@ -46,7 +46,7 @@ static bool _register_set_normal(RegisterID reg_id, uint16_t value)
     switch (reg_id)
     {
         case REG_HEATING_LEVEL:
-            if (value < 0 || value > 2) return false; // 热敷档位1-5
+            if (value > 2) return false; // 热敷档位1-5
             break;
         case REG_HEATING_TIMER:
             if (value > 0xffff) return false; // 定时0-120分钟（0=无定时）
@@ -150,7 +150,7 @@ static void _send_modbus_response(uint8_t *response_buf, uint16_t response_len)
 }
 
 // -------------------------- 核心：Modbus消息处理任务 --------------------------
-void vModbusProcessTask(void *pvParameters)
+void vProtocalTask(void *pvParameters)
 {
     (void) pvParameters;
 
@@ -333,4 +333,15 @@ void vModbusProcessTask(void *pvParameters)
         memset(modbus_rx_frame, 0, MODBUS_FRAME_MAX_LEN); // 清空接收帧，避免残留
         memset(modbus_tx_frame, 0, MODBUS_FRAME_MAX_LEN); // 清空响应帧，准备下一次
     }
+}
+
+// 初始化Modbus处理任务及相关资源
+void protocal_task_init(void)
+{
+    // 创建Modbus处理任务
+    xTaskCreate(vProtocalTask, "protocalTask",
+                512, // 堆栈大小
+                NULL,
+                4, // 任务优先级（高于按键扫描任务）
+                NULL);
 }

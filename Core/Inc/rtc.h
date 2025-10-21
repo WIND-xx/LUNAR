@@ -1,30 +1,52 @@
-#ifndef __RTC_H
-#define __RTC_H
+/* USER CODE BEGIN Header */
+/**
+ ******************************************************************************
+ * @file    rtc.h
+ * @brief   This file contains all the function prototypes for
+ *          the rtc.c file
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
+/* USER CODE END Header */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __RTC_H__
+#define __RTC_H__
 
-#include "stm32f1xx_hal.h"
-
-// 自定义日期时间结构体(不使用HAL的RTC_DateTypeDef和RTC_TimeTypeDef)
-typedef struct
+#ifdef __cplusplus
+extern "C"
 {
-    uint8_t year;    // 0-99 (表示2000-2099年)
-    uint8_t month;   // 1-12
-    uint8_t day;     // 1-31
-    uint8_t hour;    // 0-23
-    uint8_t minute;  // 0-59
-    uint8_t second;  // 0-59
-    uint8_t weekday; // 0-6 (0=星期日, 6=星期六)
-} RTC_DateTimeTypeDef;
+#endif
 
-// 外部函数声明
-HAL_StatusTypeDef RTC_Init(void);
-HAL_StatusTypeDef RTC_SetDateTime(RTC_DateTimeTypeDef *datetime);
-HAL_StatusTypeDef RTC_GetDateTime(RTC_DateTimeTypeDef *datetime);
-uint32_t          RTC_GetUTC(void);
-HAL_StatusTypeDef RTC_SetUTC(uint32_t utc);
-void              RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime);
-uint32_t          RTC_DateTimeToUTC(RTC_DateTimeTypeDef *datetime);
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
 
-// 外部RTC句柄声明
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
+
 extern RTC_HandleTypeDef hrtc;
 
-#endif /* __RTC_H */
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
+
+void MX_RTC_Init(void);
+
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __RTC_H__ */

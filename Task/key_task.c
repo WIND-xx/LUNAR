@@ -71,10 +71,10 @@ void key_event_handler(uint8_t key_id, key_event_t event)
             switch (key_id)
             {
                 case KEY_MUSIC:
-                    bt_mode(BTMODE_MUSIC);
+                    ble_mode(BTMODE_MUSIC);
                     break;
                 case KEY_BLUETOOTH:
-                    bt_mode(BTMODE_BT);
+                    ble_mode(BTMODE_BT);
                     break;
                 case KEY_PLAY_PAUSE:
                     music_switch();
