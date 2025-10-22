@@ -6,7 +6,7 @@
 #define BKP_INIT_MAGIC 0x1234      // 初始化标记
 
 // RTC句柄定义
-RTC_HandleTypeDef hrtc;
+extern RTC_HandleTypeDef hrtc;
 
 // 内部函数声明
 static bool     is_leap_year(uint16_t year);
