@@ -3,23 +3,22 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
 #include "stm32f1xx_hal.h"
 #include "task.h"
 
-// -------------------------- 配置参数（需根据实际场景修改） --------------------------
-#define AT_FRAME_MAX_LEN     100 // AT指令返回帧最大长度（如+NAME:BT05\r\n）
-#define MODBUS_FRAME_MAX_LEN 64  // Modbus帧最大长度（含CRC）
-#define TASK_BUFFER_PRIO     3   // 缓冲处理任务优先级（高于AT/Modbus任务）
-#define QUEUE_AT_LEN         5   // AT队列长度（最多缓存5个AT帧）
-#define QUEUE_MODBUS_LEN     5   // Modbus队列长度（最多缓存5个Modbus帧）
-
+// -------------------------- 配置参数 --------------------------
+#define AT_FRAME_MAX_LEN     64 // AT帧最大长度（含\r\n）
+#define MODBUS_FRAME_MAX_LEN 64 // Modbus帧最大长度（含CRC）
+#define QUEUE_AT_LEN         5  // AT队列缓存数
+#define QUEUE_MODBUS_LEN     5  // Modbus队列缓存数
+#define TASK_BUFFER_PRIO     5  // 任务优先级
 // -------------------------- 全局变量/队列声明 --------------------------
-
-extern QueueHandle_t xQueue_AT;     // AT帧处理队列
-extern QueueHandle_t xQueue_Modbus; // Modbus帧处理队列
 
 // -------------------------- 函数声明 --------------------------
 
-void buffer_process_init(void);
+void   buffer_process_init(void);
+size_t get_at_frame(uint8_t *buf, size_t buflen);
+size_t get_data_frame(uint8_t *buf, size_t buflen);
 
 #endif

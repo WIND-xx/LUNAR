@@ -1,7 +1,23 @@
 #include "BufferProcess.h"
 #include "bt401.h"
 #include "crc16.h"
+#include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
+
+// 队列元素：数据指针+长度
+typedef struct
+{
+    uint8_t *data;
+    uint16_t len;
+} FrameInfo_t;
+
+// 双缓冲静态存储
+#define BUFFER_NUM 2
+static uint8_t s_rx_buffers[BUFFER_NUM]
+                           [MODBUS_FRAME_MAX_LEN > AT_FRAME_MAX_LEN ? MODBUS_FRAME_MAX_LEN : AT_FRAME_MAX_LEN];
+static uint8_t           s_current_buf_idx = 0;
+static SemaphoreHandle_t xBufferMutex;
 
 QueueHandle_t xQueue_AT = NULL;
 QueueHandle_t xQueue_Modbus = NULL;
@@ -10,98 +26,173 @@ static void vBufferProcessTask(void *pvParameters)
 {
     (void) pvParameters;
 
-    uint8_t  temp_buf[MODBUS_FRAME_MAX_LEN] = {0};
+    uint8_t  rx_byte;
     uint16_t temp_idx = 0;
-    uint8_t  rx_byte = 0;
-    uint8_t  is_at_command = 0; // 标记是否正在接收AT指令
+    bool     has_bytes = false;
 
-    xQueue_AT = xQueueCreate(QUEUE_AT_LEN, AT_FRAME_MAX_LEN * sizeof(uint8_t));
-    xQueue_Modbus = xQueueCreate(QUEUE_MODBUS_LEN, MODBUS_FRAME_MAX_LEN * sizeof(uint8_t));
-    if ((xQueue_AT == NULL) || (xQueue_Modbus == NULL)) { vTaskDelete(NULL); }
+    // 初始化互斥锁
+    xBufferMutex = xSemaphoreCreateMutex();
+    if (xBufferMutex == NULL)
+    {
+        vTaskDelete(NULL);
+        return;
+    }
+
+    // 创建队列
+    xQueue_AT = xQueueCreate(QUEUE_AT_LEN, sizeof(FrameInfo_t));
+    xQueue_Modbus = xQueueCreate(QUEUE_MODBUS_LEN, sizeof(FrameInfo_t));
+    if ((xQueue_AT == NULL) || (xQueue_Modbus == NULL))
+    {
+        vTaskDelete(NULL);
+        return;
+    }
 
     for (;;)
     {
+        has_bytes = false;
+
         while (bt401_readbyte(&rx_byte))
         {
-            // 检查是否是AT指令的开始
-            if (temp_idx == 0 && rx_byte == 'A') { is_at_command = 1; }
-            else if (temp_idx == 1 && rx_byte == 'T')
-            {
-                is_at_command = 1; // 确认是AT指令
-            }
+            has_bytes = true;
 
-            if (temp_idx < MODBUS_FRAME_MAX_LEN - 1) { temp_buf[temp_idx++] = rx_byte; }
-            else
+            // 加锁获取当前缓冲区
+            xSemaphoreTake(xBufferMutex, portMAX_DELAY);
+            uint8_t *current_buf = s_rx_buffers[s_current_buf_idx];
+            uint16_t max_buf_len = sizeof(s_rx_buffers[0]);
+
+            // 缓冲区满则切换（避免溢出）
+            if (temp_idx >= max_buf_len)
             {
-                // 缓冲区满，重置
+                s_current_buf_idx = (s_current_buf_idx + 1) % BUFFER_NUM;
+                current_buf = s_rx_buffers[s_current_buf_idx];
                 temp_idx = 0;
-                memset(temp_buf, 0, MODBUS_FRAME_MAX_LEN);
-                is_at_command = 0;
-                break;
             }
+            current_buf[temp_idx++] = rx_byte;
+            xSemaphoreGive(xBufferMutex);
 
-            // 检查AT指令结束符(\r\n)
-            if (is_at_command && temp_idx >= 2)
+            // 优先处理AT帧：仅以\r\n结尾判断（不检查开头）
+            if (temp_idx >= 2) // 至少2字节才可能包含\r\n
             {
-                if ((temp_buf[temp_idx - 2] == '\r') && (temp_buf[temp_idx - 1] == '\n'))
+                if (current_buf[temp_idx - 2] == '\r' && current_buf[temp_idx - 1] == '\n')
                 {
-                    // 发送AT指令到队列
-                    xQueueSend(xQueue_AT, temp_buf, pdMS_TO_TICKS(10));
-
-                    // 重置缓冲区
-                    temp_idx = 0;
-                    memset(temp_buf, 0, MODBUS_FRAME_MAX_LEN);
-                    is_at_command = 0;
-                    continue;
-                }
-            }
-
-            // 处理Modbus帧
-            if (!is_at_command && temp_idx >= 4)
-            {
-                uint16_t modbus_len = 0;
-                switch (temp_buf[1])
-                {
-                    case 0x03:
-                        modbus_len = 6; // 读寄存器指令长度固定为6字节
-                        break;
-                    case 0x10:
-                        modbus_len = 7 + temp_buf[6]; // 写多个寄存器指令长度
-                        break;
-                    default:
-                        modbus_len = MODBUS_FRAME_MAX_LEN;
-                        break;
-                }
-
-                // 检查是否接收完一帧
-                if (temp_idx >= modbus_len)
-                {
-                    // 计算并验证CRC
-                    uint16_t calc_crc = Modbus_CRC16(temp_buf, modbus_len - 2);
-                    uint16_t frame_crc = (temp_buf[modbus_len - 1] << 8) | temp_buf[modbus_len - 2];
-
-                    if (calc_crc == frame_crc)
+                    // 确保不超过AT帧最大长度
+                    if (temp_idx > AT_FRAME_MAX_LEN)
                     {
-                        // CRC验证通过，发送到Modbus队列
-                        xQueueSend(xQueue_Modbus, temp_buf, pdMS_TO_TICKS(10));
+                        temp_idx = 0; // 超长帧丢弃
+                        continue;
                     }
 
-                    // 重置缓冲区
-                    temp_idx = 0;
-                    memset(temp_buf, 0, MODBUS_FRAME_MAX_LEN);
-                    continue;
+                    FrameInfo_t frame_info;
+                    frame_info.len = temp_idx;
+
+                    // 切换缓冲区，避免数据覆盖
+                    xSemaphoreTake(xBufferMutex, portMAX_DELAY);
+                    frame_info.data = current_buf;
+                    s_current_buf_idx = (s_current_buf_idx + 1) % BUFFER_NUM;
+                    xSemaphoreGive(xBufferMutex);
+
+                    // 发送到AT队列
+                    xQueueSend(xQueue_AT, &frame_info, pdMS_TO_TICKS(10));
+                    temp_idx = 0; // 重置索引
+                    continue;     // 处理完AT帧，继续接收新数据
                 }
             }
+
+            // 处理Modbus帧（地址0x01，功能码03/10，避免与AT帧混淆）
+            // 最小长度：地址(1)+功能(1)+数据(≥1)+CRC(2) → 至少5字节
+            if (temp_idx >= 5)
+            {
+                // 地址必须为0x01（核心区分特征，避免与AT帧冲突）
+                if (current_buf[0] != 0x01)
+                {
+                    continue; // 非目标地址，不处理（继续接收，可能是AT帧）
+                }
+
+                uint8_t  function = current_buf[1];
+                uint16_t modbus_len = 0;
+
+                // 仅支持功能码03和10
+                switch (function)
+                {
+                    case 0x03:
+                        modbus_len = 8; // 固定长度：地址+功能+起始地址(2)+数量(2)+CRC(2)
+                        break;
+                    case 0x10:
+                        // 动态长度：地址+功能+起始地址(2)+数量(2)+字节数(1)+数据(n)+CRC(2)
+                        if (temp_idx > 6) // 需收到字节计数字段（索引6）
+                        {
+                            modbus_len = 7 + current_buf[6] + 2; // 7=固定头部长度
+                            // 检查长度合法性
+                            if (modbus_len > max_buf_len || modbus_len > MODBUS_FRAME_MAX_LEN)
+                            {
+                                temp_idx = 0; // 超长帧丢弃
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            continue; // 等待足够字节
+                        }
+                        break;
+                    default:
+                        continue; // 不支持的功能码，不处理
+                }
+
+                // 帧长度足够时校验CRC
+                if (modbus_len > 0 && temp_idx >= modbus_len)
+                {
+                    uint16_t calc_crc = Modbus_CRC16(current_buf, modbus_len - 2);
+                    uint16_t frame_crc =
+                        (uint16_t) current_buf[modbus_len - 2] | ((uint16_t) current_buf[modbus_len - 1] << 8);
+
+                    if (calc_crc == frame_crc) // CRC正确才入队
+                    {
+                        FrameInfo_t frame_info;
+                        frame_info.len = modbus_len;
+                        xSemaphoreTake(xBufferMutex, portMAX_DELAY);
+                        frame_info.data = current_buf;
+                        s_current_buf_idx = (s_current_buf_idx + 1) % BUFFER_NUM;
+                        xSemaphoreGive(xBufferMutex);
+
+                        xQueueSend(xQueue_Modbus, &frame_info, pdMS_TO_TICKS(10));
+                    }
+                    temp_idx = 0; // 无论CRC是否正确，重置缓冲区
+                }
+            }
+        } // end while readbyte
+
+        if (!has_bytes)
+        {
+            vTaskDelay(pdMS_TO_TICKS(5)); // 无数据时延迟，降低CPU占用
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 void buffer_process_init(void)
 {
-    xTaskCreate(vBufferProcessTask, "BufferProcessTask",
-                512, // 堆栈大小
-                NULL,
-                5, // 任务优先级（高于Modbus处理任务）
-                NULL);
+    xTaskCreate(vBufferProcessTask, "BufferProcessTask", 256, NULL, TASK_BUFFER_PRIO, NULL);
+}
+
+size_t get_at_frame(uint8_t *buf, size_t buflen)
+{
+    if (buf == NULL || buflen == 0) return 0;
+
+    FrameInfo_t frame;
+    if (xQueueReceive(xQueue_AT, &frame, portMAX_DELAY) != pdTRUE) return 0;
+
+    size_t to_copy = (frame.len > buflen) ? buflen : frame.len;
+    memcpy(buf, frame.data, to_copy);
+    return to_copy;
+}
+
+size_t get_data_frame(uint8_t *buf, size_t buflen)
+{
+    if (buf == NULL || buflen == 0) return 0;
+
+    FrameInfo_t frame;
+    if (xQueueReceive(xQueue_Modbus, &frame, portMAX_DELAY) != pdTRUE) return 0;
+
+    size_t to_copy = (frame.len > buflen) ? buflen : frame.len;
+    memcpy(buf, frame.data, to_copy);
+    return to_copy;
 }

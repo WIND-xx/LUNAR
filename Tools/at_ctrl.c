@@ -88,7 +88,7 @@ void music_volume_control(VOLUME_ENUM ctrl)
 }
 void music_volume_set(uint8_t volume)
 {
-    if (volume <= 30 ) bt401_printf("AT+CA%d\r\n", volume);
+    if (volume <= 30) bt401_printf("AT+CA%d\r\n", volume);
 }
 /**
  * @brief Set bluetooth mode
