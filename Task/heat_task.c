@@ -1,18 +1,19 @@
 #include "heat_task.h"
 #include "heat.h"
+#include "led.h"
 #include "ntc.h"
 #include "pid.h"
 
 #include "FreeRTOS.h"
+#include "protocal_task.h" // 用于寄存器变更处理
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
 #include "timers.h"
 #include <stdint.h>
 
-#include "protocal_task.h" // 用于寄存器变更处理
 // 加热控制结构体实例
-Heat_t heat = {.status = HEAT_STOP, .target_temperature = 50.0f, .set_time = 0, .remain_sec = 0};
+Heat_t heat = {.status = HEAT_STOP, .target_temperature = 35.0f, .set_time = 0, .remain_sec = 0};
 
 // 定时相关资源
 static TimerHandle_t     xHeatingTimer = NULL; // 加热定时器句柄
@@ -87,6 +88,7 @@ void heat_control_task(void *arg)
                             xTimerStop(xHeatingTimer, 0);
                         }
                     }
+                    led_time_select(heat.remain_sec); // 更新时间指示灯显示（秒）
                     break;
             }
 
@@ -169,7 +171,7 @@ void heat_set_timer(uint16_t minute)
     // 更新定时参数
     heat.set_time = minute;
     heat.remain_sec = (uint32_t) minute * 60; // 转换为秒
-
+    led_time_select(heat.remain_sec);         // 更新时间指示灯显示 （秒）
     if (minute > 0 && heat.status == HEAT_RUNNING)
     {
         // 启动/重置主定时器（定时时间=总秒数）
@@ -225,10 +227,18 @@ void heat_status_switch(void)
     xSemaphoreGive(xHeatMutex);
 
     if (status == HEAT_RUNNING)
+    {
         heat_set_status(HEAT_STOP);
+        led_set_mode(LED_RF, LED_MODE_ON, 0);
+    }
+
     else
+    {
         heat_set_status(HEAT_RUNNING);
+        led_set_mode(LED_RF, LED_MODE_OFF, 0);
+    }
 }
+
 // 设置加热档位（外部调用接口）
 void heat_set_level(HeatLevel level)
 {

@@ -21,8 +21,6 @@ typedef enum
     LED_30MIN, // 30分钟指示灯
     LED_60MIN, // 60分钟指示灯
     LED_RF,    // 射频指示灯
-    LED_G,     // 绿色LED
-    LED_R,     // 红色LED
     LED_B,     // 蓝色LED
     LED_COUNT  // LED总数，用于边界检查
 } LED_Index;
@@ -63,13 +61,7 @@ bool led_get(LED_Index idx);
  * @brief 时间指示灯控制：10/30/60分钟互斥显示
  * @param minutes 可选值：10/30/60（对应时间）、0xFF（全亮）、0（全灭）
  */
-void led_time_select(uint16_t minutes);
-
-/**
- * @brief 保留的状态更新函数，兼容旧接口
- * @note FreeRTOS下由定时器自动处理，无需手动调用
- */
-void led_update_states(void);
+void led_time_select(uint16_t seconds);
 
 #ifdef __cplusplus
 }

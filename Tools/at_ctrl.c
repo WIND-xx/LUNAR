@@ -11,6 +11,7 @@
 #include "at_ctrl.h"
 #include "FreeRTOS.h"
 #include "bt401.h"
+#include "led.h"
 #include "task.h"
 #include <stdint.h>
 
@@ -102,12 +103,16 @@ void ble_mode(BTMODE_ENUM mode)
     {
         case BTMODE_OFF:
             cmd = "AT+CM08\r\n";
+            led_set_mode(LED_BT, LED_MODE_OFF, 0);
+            led_set_mode(LED_MUSIC, LED_MODE_OFF, 0);
             break;
         case BTMODE_BT:
             cmd = "AT+CM01\r\n";
+            led_set_mode(LED_BT, LED_MODE_ON, 0);
             break;
         case BTMODE_MUSIC:
             cmd = "AT+CM04\r\n";
+            led_set_mode(LED_MUSIC, LED_MODE_ON, 0);
             break;
         default:
             return;

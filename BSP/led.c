@@ -31,10 +31,8 @@ static const led_hw_config_t monochrome_led_config[LED_RF + 1] = {
 /**
  * @brief 彩色LED通道配置
  */
-static const led_hw_config_t color_led_config[3] = {
-    // [0] = {LED_G_GPIO_Port, LED_G_Pin, GPIO_PIN_RESET}, // 绿色LED
-    // [1] = {LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET}, // 红色LED
-    [2] = {LED_B_GPIO_Port, LED_B_Pin, GPIO_PIN_RESET}, // 蓝色LED
+static const led_hw_config_t color_led_config[1] = {
+    [0] = {LED_B_GPIO_Port, LED_B_Pin, GPIO_PIN_RESET}, // 蓝色LED
 };
 
 /**
@@ -63,26 +61,6 @@ static SemaphoreHandle_t led_mutex = NULL;
 static TimerHandle_t blink_timer = NULL;
 
 /**
- * @brief 获取彩色LED对应的通道索引
- * @param idx LED索引
- * @return 通道索引(0-2)，无效时返回-1
- */
-static int led_get_color_channel(LED_Index idx)
-{
-    switch (idx)
-    {
-        case LED_G:
-            return 0;
-        case LED_R:
-            return 1;
-        case LED_B:
-            return 2;
-        default:
-            return -1;
-    }
-}
-
-/**
  * @brief 直接控制LED硬件状态
  * @param idx LED索引
  * @param on true: 点亮，false: 熄灭
@@ -101,22 +79,13 @@ static void led_hw_set(LED_Index idx, bool on)
     }
     else
     {
-        // 彩色LED控制
-        int channel = led_get_color_channel(idx);
-        if (channel >= 0)
+        // 彩色LED控制 - 简化为只支持LED_B
+        if (idx == LED_B)
         {
-            // 先关闭所有彩色LED通道
-            for (int i = 0; i < 3; i++)
-            {
-                HAL_GPIO_WritePin(color_led_config[i].port, color_led_config[i].pin, GPIO_PIN_SET);
-            }
-
-            // 只点亮指定通道
-            if (on)
-            {
-                HAL_GPIO_WritePin(color_led_config[channel].port, color_led_config[channel].pin,
-                                  color_led_config[channel].active_level);
-            }
+            const led_hw_config_t *config = &color_led_config[0];
+            GPIO_PinState          state =
+                on ? config->active_level : (config->active_level == GPIO_PIN_SET ? GPIO_PIN_RESET : GPIO_PIN_SET);
+            HAL_GPIO_WritePin(config->port, config->pin, state);
         }
     }
 }
@@ -138,12 +107,11 @@ static bool led_hw_get(LED_Index idx)
     }
     else
     {
-        // 读取彩色LED状态
-        int channel = led_get_color_channel(idx);
-        if (channel >= 0)
+        // 只读取蓝色LED状态
+        if (idx == LED_B)
         {
-            return (HAL_GPIO_ReadPin(color_led_config[channel].port, color_led_config[channel].pin) ==
-                    color_led_config[channel].active_level);
+            const led_hw_config_t *config = &color_led_config[0];
+            return (HAL_GPIO_ReadPin(config->port, config->pin) == config->active_level);
         }
     }
 
@@ -286,67 +254,52 @@ bool led_get(LED_Index idx)
     return state;
 }
 
-void led_time_select(uint16_t minutes)
+void led_time_select(uint16_t seconds)
 {
     if (led_mutex == NULL) return;
 
     // 尝试获取锁，超时时间10ms
     if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE)
     {
+        const uint32_t sec_10 = 10U * 60U; // 600
+        const uint32_t sec_30 = 30U * 60U; // 1800
+
         // 先关闭所有时间指示灯
         led_hw_set(LED_10MIN, false);
         led_hw_set(LED_30MIN, false);
         led_hw_set(LED_60MIN, false);
 
-        // 根据输入设置相应的指示灯
-        if (minutes == 0xFF)
-        {
-            // 全亮模式
-            led_hw_set(LED_10MIN, true);
-            led_hw_set(LED_30MIN, true);
-            led_hw_set(LED_60MIN, true);
+        // 默认全部设为 OFF
+        led_controls[LED_10MIN].mode = LED_MODE_OFF;
+        led_controls[LED_30MIN].mode = LED_MODE_OFF;
+        led_controls[LED_60MIN].mode = LED_MODE_OFF;
 
-            // 更新控制状态
-            led_controls[LED_10MIN].mode = LED_MODE_ON;
-            led_controls[LED_30MIN].mode = LED_MODE_ON;
+        // 按用户要求的规则：
+        // seconds == 0 -> 全灭
+        // seconds > 30min -> 点亮 60min
+        // 10min < seconds <= 30min -> 点亮 30min
+        // 0 < seconds <= 10min -> 点亮 10min
+        if (seconds == 0)
+        {
+            // 全灭，已默认设置
+        }
+        else if (seconds > sec_30)
+        {
+            // 大于30分钟（包括大于60分钟）点亮 60 分钟灯
+            led_hw_set(LED_60MIN, true);
             led_controls[LED_60MIN].mode = LED_MODE_ON;
         }
-        else if (minutes >= 60)
+        else if (seconds > sec_10)
         {
-            // 60分钟模式
-            led_hw_set(LED_60MIN, true);
-
-            // 更新控制状态
-            led_controls[LED_10MIN].mode = LED_MODE_OFF;
-            led_controls[LED_30MIN].mode = LED_MODE_OFF;
-            led_controls[LED_60MIN].mode = LED_MODE_ON;
-        }
-        else if (minutes >= 30)
-        {
-            // 30分钟模式
+            // 大于10分钟且不超过30分钟 -> 点亮 30 分钟灯
             led_hw_set(LED_30MIN, true);
-
-            // 更新控制状态
-            led_controls[LED_10MIN].mode = LED_MODE_OFF;
             led_controls[LED_30MIN].mode = LED_MODE_ON;
-            led_controls[LED_60MIN].mode = LED_MODE_OFF;
-        }
-        else if (minutes >= 10)
-        {
-            // 10分钟模式
-            led_hw_set(LED_10MIN, true);
-
-            // 更新控制状态
-            led_controls[LED_10MIN].mode = LED_MODE_ON;
-            led_controls[LED_30MIN].mode = LED_MODE_OFF;
-            led_controls[LED_60MIN].mode = LED_MODE_OFF;
         }
         else
         {
-            // 全灭模式
-            led_controls[LED_10MIN].mode = LED_MODE_OFF;
-            led_controls[LED_30MIN].mode = LED_MODE_OFF;
-            led_controls[LED_60MIN].mode = LED_MODE_OFF;
+            // 小于或等于10分钟且大于0 -> 点亮 10 分钟灯
+            led_hw_set(LED_10MIN, true);
+            led_controls[LED_10MIN].mode = LED_MODE_ON;
         }
 
         xSemaphoreGive(led_mutex);

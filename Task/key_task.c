@@ -1,6 +1,7 @@
 #include "key_task.h"
 #include "heat_task.h"
 #include "key.h"
+#include "led.h"
 
 #include "FreeRTOS.h"
 #include "at_ctrl.h"
@@ -128,36 +129,17 @@ void key_event_handler(uint8_t key_id, key_event_t event)
             {
                 case KEY_MUSIC:
                     // 长按处理
+                    ble_mode(BTMODE_OFF);
                     break;
                 case KEY_BLUETOOTH:
-                    // 长按处理
-                    break;
-                case KEY_PLAY_PAUSE:
+                    ble_mode(BTMODE_OFF);
                     // 长按处理
                     break;
                 case KEY_MIN10:
-                    // 长按处理
-                    break;
+                case KEY_MIN30:
                 case KEY_MIN60:
-                    // 长按处理
-                    break;
-                case KEY_PREV:
-                    // 长按处理
-                    break;
-                case KEY_NEXT:
-                    // 长按处理
-                    break;
-                case KEY_VOL_DOWN:
-                    // 长按处理
-                    break;
-                case KEY_VOL_UP:
-                    // 长按处理
-                    break;
-                case KEY_HEAT_PLUS:
-                    // 长按处理
-                    break;
-                case KEY_HEAT_MINUS:
-                    // 长按处理
+                    heat_set_timer(0);  // 取消定时
+                    led_time_select(0); // 关闭时间指示灯
                     break;
                 case KEY_SHORTCUT_1:
                     // 长按处理
@@ -165,15 +147,7 @@ void key_event_handler(uint8_t key_id, key_event_t event)
                 case KEY_SHORTCUT_2:
                     // 长按处理
                     break;
-                case KEY_MIN30:
-                    // 长按处理
-                    break;
-                case KEY_HEAT:
-                    // 长按处理
-                    break;
-                case KEY_POWER:
-                    // 长按处理
-                    break;
+
                 default:
                     break;
             }
