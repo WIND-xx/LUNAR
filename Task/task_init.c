@@ -12,10 +12,9 @@
 
 void task_init(void)
 {
-    led_init();    // 初始化LED控制器
-    buzzer_init(); // 初始化蜂鸣器
-    // 创建按键扫描任务
-    xTaskCreate(key_scan, "KeyScan", 128 * 2, NULL, 2, NULL);
+    led_init();            // 初始化LED控制器
+    buzzer_init();         // 初始化蜂鸣器
+    key_task_init();       // 初始化按键任务
     heat_task_init();      // 初始化加热任务
     buffer_process_init(); // 初始化缓冲处理任务
     protocal_task_init();  // 初始化协议处理任务
@@ -30,7 +29,7 @@ void do_reg_change_actions(RegisterID reg, uint16_t value)
             else { heat_set_status(HEAT_RUNNING); }
             break;
         case REG_HEATING_LEVEL:
-            heat_set_level((HeatLevel) (value - 1)); // 假设寄存器值1-5对应档位0-4
+            heat_set_level((HeatLevel) value);
             break;
         case REG_HEATING_TIMER:
             heat_set_timer(value); // 设置定时（分钟）

@@ -25,6 +25,7 @@ typedef enum
 /*----------------------------------function----------------------------------*/
 void key_scan(void *arg);
 void key_event_handler(uint8_t key_id, key_event_t event);
+void key_task_init(void);
 /*------------------------------------test------------------------------------*/
 
 #ifdef __cplusplus

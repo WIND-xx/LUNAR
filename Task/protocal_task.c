@@ -120,7 +120,7 @@ void vProtocalTask(void *pvParameters)
     uint8_t  modbus_rx_frame[MODBUS_FRAME_MAX_LEN] = {0};
     uint8_t  modbus_tx_frame[MODBUS_FRAME_MAX_LEN] = {0};
     uint16_t tx_len = 0;
-    size_t   frame_len = 0; // 实际接收的帧长度
+    uint16_t frame_len = 0; // 实际接收的帧长度
 
     for (;;)
     {

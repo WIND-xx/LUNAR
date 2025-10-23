@@ -156,3 +156,8 @@ void key_event_handler(uint8_t key_id, key_event_t event)
             break;
     }
 }
+
+void key_task_init(void)
+{
+    xTaskCreate(key_scan, "KeyScan", 256, NULL, 2, NULL);
+}
