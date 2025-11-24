@@ -1,6 +1,5 @@
-
-#ifndef AT_PROCESS_TASK_H
-#define AT_PROCESS_TASK_H
+#ifndef AT_PROCESS_H
+#define AT_PROCESS_H
 
 #ifdef __cplusplus
 extern "C"
@@ -8,9 +7,7 @@ extern "C"
 #endif
 
 /*----------------------------------include-----------------------------------*/
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
+
 /*-----------------------------------macro------------------------------------*/
 
 /*----------------------------------typedef-----------------------------------*/
@@ -27,4 +24,4 @@ extern "C"
 }
 #endif
 
-#endif /* AT_PROCESS_TASK_H */
+#endif /* AT_PROCESS_H */

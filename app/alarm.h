@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "protocal_task.h"
+#include "protocal.h"
 // 闹钟状态枚举（平台无关）
 typedef enum
 {

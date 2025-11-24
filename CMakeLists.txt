@@ -49,7 +49,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 file(GLOB_RECURSE PROJECT_SOURCES
     BSP/*.c
     Tools/*.c
-    Task/*.c
+    app/*.c
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
@@ -58,7 +58,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     BSP
-    Task
+    app
     Tools
 )
 

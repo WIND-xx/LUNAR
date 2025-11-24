@@ -1,3 +1,13 @@
+/**
+ * @file key_task.c
+ * @author ChenGaoxin (3180200199@qq.com)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-06
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include "key_task.h"
 #include "heat_task.h"
 #include "key.h"

@@ -1,3 +1,14 @@
+/**
+ * @file crc16.c
+ * @author ChenGaoxin (3180200199@qq.com)
+ * @brief
+ * @version 0.1
+ * @date 2025-11-04
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
+
 #include "crc16.h"
 
 uint16_t _calc_check_value(const uint8_t data[], uint32_t dataLen)

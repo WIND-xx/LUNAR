@@ -1,14 +1,24 @@
-#ifndef __BT401_H
-#define __BT401_H
+#ifndef BT401_H
+#define BT401_H
 
+#include "FreeRTOS.h" // 用于TickType_t类型
 #include <stdint.h>
 
-void bt401_init(void);
+// DMA缓冲区大小（需与源文件保持一致）
+#define BT401_DMA_BUFFER_SIZE 256
 
-// 原始读写
-uint8_t  bt401_readbyte(uint8_t *rx_byte);
-uint16_t bt401_readbytes(uint8_t *buf, uint16_t len);
-uint8_t  bt401_sendbytes(uint8_t *buf, uint16_t len);
-int      bt401_printf(const char *format, ...);
+// 帧结构：存储一帧完整数据（供外部解析使用）
+#pragma pack(1)
+typedef struct
+{
+    uint8_t  data[BT401_DMA_BUFFER_SIZE]; // 帧数据缓冲区
+    uint16_t len;                         // 实际帧长度（<= BT401_DMA_BUFFER_SIZE）
+} frame_t;
+#pragma pack()
 
-#endif /* __BT401_H */
+void    bt401_init(void);
+uint8_t bt401_sendbytes(uint8_t *buf, uint16_t len);
+int     bt401_printf(const char *format, ...);
+uint8_t bt401_get_frame(frame_t *frame, TickType_t timeout);
+
+#endif // BT401_H

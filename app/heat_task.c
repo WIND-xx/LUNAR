@@ -1,3 +1,14 @@
+
+/**
+ * @file heat_task.c
+ * @author ChenGaoxin (3180200199@qq.com)
+ * @brief
+ * @version 0.1
+ * @date 2025-11-06
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
 #include "heat_task.h"
 #include "heat.h"
 #include "led.h"
@@ -5,7 +16,7 @@
 #include "pid.h"
 
 #include "FreeRTOS.h"
-#include "protocal_task.h" // 用于寄存器变更处理
+#include "protocal.h" // 用于寄存器变更处理
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"

@@ -1,3 +1,13 @@
+/**
+ * @file alarm.c
+ * @author ChenGaoxin (3180200199@qq.com)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-06
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include "alarm.h"
 #include "bsp_rtc.h"
 #include "heat_task.h" // 用于触发加热动作

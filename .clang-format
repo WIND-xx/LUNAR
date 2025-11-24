@@ -53,3 +53,5 @@ ColumnLimit: 120
 IndentCaseLabels: true
 #命名空间缩进
 IndentExternBlock: NoIndent
+#头文件排序
+SortIncludes: true

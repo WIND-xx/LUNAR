@@ -22,20 +22,21 @@
 #define __USART_H__
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include "ring_buffer.h"
+
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN Private defines */
-extern RingBuffer_TypeDef USART3_RingBuf; // USART3环形缓冲区
+
 /* USER CODE END Private defines */
 
 void MX_USART3_UART_Init(void);
@@ -48,4 +49,3 @@ void MX_USART3_UART_Init(void);
 #endif
 
 #endif /* __USART_H__ */
-
