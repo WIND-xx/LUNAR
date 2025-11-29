@@ -1,288 +1,389 @@
-
 /**
  * @file heat_task.c
  * @author ChenGaoxin (3180200199@qq.com)
  * @brief
  * @version 0.1
- * @date 2025-11-06
+ * @date 2025-11-30
  *
  * @copyright Copyright (c) 2025
  *
  */
 #include "heat_task.h"
+#include "buzzer.h"
 #include "heat.h"
 #include "led.h"
 #include "ntc.h"
 #include "pid.h"
 
 #include "FreeRTOS.h"
-#include "protocal.h" // 用于寄存器变更处理
+#include "protocal.h"
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
 #include "timers.h"
 #include <stdint.h>
 
-// 加热控制结构体实例
-Heat_t heat = {.status = HEAT_STOP, .target_temperature = 35.0f, .set_time = 0, .remain_sec = 0};
+Heat_t heat = {.status = HEAT_STOP,
+               .target_temperature = 35.0f,
+               .set_time = 0,
+               .remain_sec = 0,
+               .level = HEAT_LEVEL_1,
+               .is_timing = false};
 
-// 定时相关资源
-static TimerHandle_t     xHeatingTimer = NULL; // 加热定时器句柄
-static SemaphoreHandle_t xHeatMutex = NULL;    // 保护heat结构体的互斥锁
-static QueueHandle_t     xHeatMsgQueue = NULL; // 加热任务消息队列
+static TimerHandle_t     xHeatingTimer = NULL;
+static TimerHandle_t     xRemainTimer = NULL;
+static SemaphoreHandle_t xHeatMutex = NULL;
+static QueueHandle_t     xHeatCtrlQueue = NULL;
 
-// 消息类型定义
 typedef enum
 {
-    MSG_TIMER_EXPIRE = 0x01, // 定时结束消息
-    MSG_UPDATE_REMAIN = 0x02 // 更新剩余时间消息
+    MSG_TIMER_EXPIRE = 0x01,
+    MSG_UPDATE_REMAIN = 0x02,
+    MSG_SET_STATUS = 0x03,
+    MSG_SET_LEVEL = 0x04,
+    MSG_SET_TIMER = 0x05
 } HeatMsgType;
 
-// 定时器回调函数：定时结束时发送消息
+typedef struct
+{
+    HeatMsgType type;
+    union {
+        HeatStatus status;
+        HeatLevel  level;
+        uint16_t   minute;
+    } param;
+} HeatMsg;
+
+#define LOCK()   (xSemaphoreTake(xHeatMutex, pdMS_TO_TICKS(50)) == pdTRUE)
+#define UNLOCK() xSemaphoreGive(xHeatMutex)
+
+static void heat_hw_sync_off(void)
+{
+    heat_off();
+    led_set_mode(LED_RF, LED_MODE_OFF, 0);
+}
+
+static void heat_hw_sync_on(void)
+{
+    led_set_mode(LED_RF, LED_MODE_ON, 0);
+}
+
+static void heat_stop_all(void)
+{
+    HeatStatus old_status = HEAT_STOP;
+
+    if (LOCK())
+    {
+        old_status = heat.status;
+        heat.status = HEAT_STOP;
+        heat.remain_sec = 0;
+        heat.set_time = 0;
+        heat.is_timing = false;
+        UNLOCK();
+    }
+
+    if (old_status == HEAT_RUNNING)
+    {
+        heat_hw_sync_off();
+        led_time_select(0);
+        xTimerStop(xRemainTimer, 0);
+        xTimerStop(xHeatingTimer, 0);
+        protocal_uplode_heat();
+        buzzer_beep(10);
+    }
+}
+
 static void heating_timer_callback(TimerHandle_t xTimer)
 {
     (void) xTimer;
-    HeatMsgType msg = MSG_TIMER_EXPIRE;
-    xQueueSend(xHeatMsgQueue, &msg, 0); // 非阻塞发送
+    HeatMsg msg = {.type = MSG_TIMER_EXPIRE};
+    xQueueSend(xHeatCtrlQueue, &msg, 0);
 }
-
-// 定时更新剩余时间的软件定时器（1秒一次）
-static TimerHandle_t xRemainTimer = NULL;
 
 static void remain_timer_callback(TimerHandle_t xTimer)
 {
     (void) xTimer;
-    HeatMsgType msg = MSG_UPDATE_REMAIN;
-    xQueueSend(xHeatMsgQueue, &msg, 0); // 非阻塞发送
+    HeatMsg msg = {.type = MSG_UPDATE_REMAIN};
+    xQueueSend(xHeatCtrlQueue, &msg, 0);
 }
 
-// 加热控制任务：整合PID控制与定时逻辑
-void heat_control_task(void *arg)
+static void process_heat_message(HeatMsg *msg)
 {
-    (void) arg;
-    static TickType_t xLastWakeTime = 0;
-    xLastWakeTime = xTaskGetTickCount();
-    PID_Controller heater_pid;
-    PID_Init(&heater_pid, 10.0f, 0.1f, 4.5f, 50.0f, 0.0f, 100.0f);
-    heat_init(); // 初始化加热硬件
-    for (;;)
+    switch (msg->type)
     {
-        // 处理消息队列（优先处理定时相关事件）
-        HeatMsgType msg;
-        if (xQueueReceive(xHeatMsgQueue, &msg, 0) == pdTRUE)
-        {
-            xSemaphoreTake(xHeatMutex, portMAX_DELAY);
+        case MSG_TIMER_EXPIRE: {
+            HeatStatus old_status = HEAT_STOP;
+            uint16_t   old_set_time = 0;
 
-            switch (msg)
+            if (LOCK())
             {
-                case MSG_TIMER_EXPIRE:
-                    // 定时结束：关闭加热
-                    heat.status = HEAT_STOP;
-                    heat.remain_sec = 0;
-                    heat.set_time = 0;
-                    heat_off();                  // 关闭硬件加热
-                    xTimerStop(xRemainTimer, 0); // 停止剩余时间更新
-                    break;
+                old_status = heat.status;
+                old_set_time = heat.set_time;
+                heat.status = HEAT_STOP;
+                heat.remain_sec = 0;
+                heat.set_time = 0;
+                heat.is_timing = false;
+                UNLOCK();
+            }
 
-                case MSG_UPDATE_REMAIN:
-                    // 每秒更新剩余时间
-                    if (heat.status == HEAT_RUNNING && heat.remain_sec > 0)
+            if (old_status == HEAT_RUNNING && old_set_time > 0)
+            {
+                heat_hw_sync_off();
+                led_time_select(0);
+                xTimerStop(xRemainTimer, 0);
+                xTimerStop(xHeatingTimer, 0);
+                protocal_uplode_heat();
+                buzzer_beep(200);
+            }
+            break;
+        }
+
+        case MSG_UPDATE_REMAIN: {
+            uint32_t   remain = 0;
+            HeatStatus status = HEAT_STOP;
+
+            if (LOCK())
+            {
+                status = heat.status;
+                if (status == HEAT_RUNNING && heat.remain_sec > 0)
+                {
+                    heat.remain_sec--;
+                    remain = heat.remain_sec;
+                }
+                UNLOCK();
+            }
+
+            if (status == HEAT_RUNNING && remain > 0) { led_time_select(remain); }
+            else if (status == HEAT_RUNNING && remain == 0) { heat_stop_all(); }
+            break;
+        }
+
+        case MSG_SET_STATUS: {
+            HeatStatus new_status = msg->param.status;
+            HeatStatus old_status = HEAT_STOP;
+            uint16_t   set_time = 0;
+
+            if (LOCK())
+            {
+                old_status = heat.status;
+                set_time = heat.set_time;
+                heat.status = new_status;
+                UNLOCK();
+            }
+
+            if (new_status == HEAT_STOP) { heat_stop_all(); }
+            else if (new_status == HEAT_RUNNING && old_status != HEAT_RUNNING)
+            {
+                heat_hw_sync_on();
+                if (set_time > 0)
+                {
+                    if (LOCK())
                     {
-                        heat.remain_sec--;
-                        // 剩余时间为0时触发定时结束（双重保障）
-                        if (heat.remain_sec == 0)
-                        {
-                            heat.status = HEAT_STOP;
-                            heat.set_time = 0;
-                            heat_off();
-                            xTimerStop(xRemainTimer, 0);
-                            xTimerStop(xHeatingTimer, 0);
-                        }
+                        heat.remain_sec = (uint32_t) set_time * 60;
+                        heat.is_timing = true;
+                        UNLOCK();
                     }
-                    led_time_select(heat.remain_sec); // 更新时间指示灯显示（秒）
+                    xTimerChangePeriod(xHeatingTimer, pdMS_TO_TICKS(heat.remain_sec * 1000), 0);
+                    xTimerStart(xHeatingTimer, 0);
+                    if (!xTimerIsTimerActive(xRemainTimer)) { xTimerStart(xRemainTimer, 0); }
+                }
+                protocal_uplode_heat();
+            }
+            break;
+        }
+
+        case MSG_SET_LEVEL: {
+            if (msg->param.level > HEAT_LEVEL_3) break;
+
+            float new_target = 35.0f;
+
+            switch (msg->param.level)
+            {
+                case HEAT_LEVEL_1:
+                    new_target = 35.0f;
+                    break;
+                case HEAT_LEVEL_2:
+                    new_target = 45.0f;
+                    break;
+                case HEAT_LEVEL_3:
+                    new_target = 55.0f;
                     break;
             }
 
-            xSemaphoreGive(xHeatMutex);
+            if (LOCK())
+            {
+                heat.level = msg->param.level;
+                heat.target_temperature = new_target;
+                UNLOCK();
+            }
+            protocal_uplode_heat();
+            break;
         }
 
-        // 执行PID温度控制（仅在运行状态）
-        xSemaphoreTake(xHeatMutex, portMAX_DELAY);
-        HeatStatus current_status = heat.status;
-        float      target_temp = heat.target_temperature;
-        xSemaphoreGive(xHeatMutex);
+        case MSG_SET_TIMER: {
+            if (msg->param.minute > 720) break;
 
-        if (current_status == HEAT_RUNNING)
-        {
-            float current_temp;
-            int   ret = NTC_Read(&current_temp);
+            HeatStatus status = HEAT_STOP;
 
-            if (ret != 0)
+            if (LOCK())
             {
-                PID_Reset(&heater_pid);
-                heat_off(); // 温度读取失败时关闭加热
+                status = heat.status;
+                heat.set_time = msg->param.minute;
+                heat.is_timing = (msg->param.minute > 0);
+                if (heat.is_timing) { heat.remain_sec = (uint32_t) heat.set_time * 60; }
+                else { heat.remain_sec = 0; }
+                UNLOCK();
+            }
+
+            led_time_select(heat.remain_sec);
+
+            if (heat.is_timing && status == HEAT_RUNNING)
+            {
+                xTimerStop(xHeatingTimer, 0);
+                xTimerChangePeriod(xHeatingTimer, pdMS_TO_TICKS(heat.remain_sec * 1000), 0);
+                xTimerStart(xHeatingTimer, 0);
+                if (!xTimerIsTimerActive(xRemainTimer)) { xTimerStart(xRemainTimer, 0); }
             }
             else
             {
-                float pid_output = PID(&heater_pid, current_temp, target_temp, 100);
-                if (pid_output > 0)
+                xTimerStop(xHeatingTimer, 0);
+                xTimerStop(xRemainTimer, 0);
+            }
+            protocal_uplode_heat();
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+void heat_control_task(void *arg)
+{
+    (void) arg;
+    TickType_t     xLastWakeTime = xTaskGetTickCount();
+    PID_Controller heater_pid;
+    uint8_t        ntc_fail_count = 0;
+    TickType_t     control_period = pdMS_TO_TICKS(100);
+
+    PID_Init(&heater_pid, 10.0f, 0.1f, 4.5f, 50.0f, 0.0f, 100.0f);
+    heat_init();
+
+    for (;;)
+    {
+        HeatMsg msg;
+        while (xQueueReceive(xHeatCtrlQueue, &msg, 0) == pdTRUE)
+        {
+            process_heat_message(&msg);
+        }
+
+        HeatStatus status = HEAT_STOP;
+        float      target_temp = 0.0f;
+        if (LOCK())
+        {
+            status = heat.status;
+            target_temp = heat.target_temperature;
+            UNLOCK();
+        }
+
+        if (status == HEAT_RUNNING) { control_period = (target_temp > 45.0f) ? pdMS_TO_TICKS(50) : pdMS_TO_TICKS(100); }
+        else { control_period = pdMS_TO_TICKS(200); }
+
+        if (status == HEAT_RUNNING)
+        {
+            heat_hw_sync_on();
+            float curr_temp = 0.0f;
+
+            if (NTC_Read(&curr_temp) == 0)
+            {
+                ntc_fail_count = 0;
+                float pid_out = PID(&heater_pid, curr_temp, target_temp, control_period);
+                heat_on(pid_out);
+            }
+            else
+            {
+                if (++ntc_fail_count > 3)
                 {
-                    heat_on(pid_output); // 按PID输出控制加热强度
+                    heat_stop_all();
+                    ntc_fail_count = 0;
                 }
-                else { heat_off(); }
+                else { vTaskDelay(pdMS_TO_TICKS(50)); }
             }
         }
         else
         {
-            heat_off(); // 非运行状态关闭加热
+            heat_hw_sync_off();
+            PID_Reset(&heater_pid);
+            ntc_fail_count = 0;
         }
 
-        // 100ms周期阻塞（保证控制频率）
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+        vTaskDelayUntil(&xLastWakeTime, control_period);
     }
 }
 
-// 初始化加热任务相关资源
 void heat_task_init(void)
 {
-    // 创建互斥锁（保护heat结构体）
     xHeatMutex = xSemaphoreCreateMutex();
-    configASSERT(xHeatMutex != NULL);
+    xHeatCtrlQueue = xQueueCreate(5, sizeof(HeatMsg));
+    xHeatingTimer = xTimerCreate("HeatTimer", pdMS_TO_TICKS(1000), pdFALSE, NULL, heating_timer_callback);
+    xRemainTimer = xTimerCreate("RemainTimer", pdMS_TO_TICKS(1000), pdTRUE, NULL, remain_timer_callback);
 
-    // 创建消息队列（容量为5，存放消息类型）
-    xHeatMsgQueue = xQueueCreate(5, sizeof(HeatMsgType));
-    configASSERT(xHeatMsgQueue != NULL);
-
-    // 创建加热定时主定时器（一次性触发）
-    xHeatingTimer = xTimerCreate("HeatingTimer",
-                                 pdMS_TO_TICKS(1000), // 初始周期（后续动态修改）
-                                 pdFALSE, (void *) 0, heating_timer_callback);
-    configASSERT(xHeatingTimer != NULL);
-
-    // 创建剩余时间更新定时器（1秒周期触发）
-    xRemainTimer = xTimerCreate("RemainTimer",
-                                pdMS_TO_TICKS(1000), // 1秒周期
-                                pdTRUE,              // 自动重载
-                                (void *) 1, remain_timer_callback);
-    configASSERT(xRemainTimer != NULL);
-
-    // 创建加热控制任务
-    xTaskCreate(heat_control_task, "heat_task",
-                512, // 堆栈大小
-                NULL,
-                3, // 任务优先级（高于空闲任务）
-                NULL);
+    configASSERT(xHeatMutex && xHeatCtrlQueue && xHeatingTimer && xRemainTimer);
+    xTaskCreate(heat_control_task, "heat_task", 512, NULL, 3, NULL);
 }
 
-// 设置加热定时（外部调用接口）
-void heat_set_timer(uint16_t minute)
+bool heat_set_status(HeatStatus status)
 {
-    xSemaphoreTake(xHeatMutex, portMAX_DELAY);
-
-    // 更新定时参数
-    heat.set_time = minute;
-    heat.remain_sec = (uint32_t) minute * 60; // 转换为秒
-    led_time_select(heat.remain_sec);         // 更新时间指示灯显示 （秒）
-    if (minute > 0 && heat.status == HEAT_RUNNING)
-    {
-        // 启动/重置主定时器（定时时间=总秒数）
-        xTimerStop(xHeatingTimer, 0);
-        xTimerChangePeriod(xHeatingTimer, pdMS_TO_TICKS(heat.remain_sec * 1000), 0);
-        xTimerStart(xHeatingTimer, 0);
-
-        // 启动剩余时间更新定时器
-        if (xTimerIsTimerActive(xRemainTimer) == pdFALSE) { xTimerStart(xRemainTimer, 0); }
-    }
-    else
-    {
-        // 定时为0时停止定时器
-        xTimerStop(xHeatingTimer, 0);
-        xTimerStop(xRemainTimer, 0);
-    }
-
-    xSemaphoreGive(xHeatMutex);
+    if (!xHeatCtrlQueue) return false;
+    HeatMsg msg = {.type = MSG_SET_STATUS, .param.status = status};
+    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
 }
 
-// 启动/停止加热（外部调用接口）
-void heat_set_status(HeatStatus status)
+bool heat_set_level(HeatLevel level)
 {
-    xSemaphoreTake(xHeatMutex, portMAX_DELAY);
-
-    heat.status = status;
-    if (status == HEAT_STOP)
-    {
-        // 停止加热时关闭所有定时器
-        xTimerStop(xHeatingTimer, 0);
-        xTimerStop(xRemainTimer, 0);
-        heat.remain_sec = 0;
-        heat.set_time = 0;
-    }
-    else
-    {
-        // 启动加热时，如果有定时设置则启动定时器
-        if (heat.set_time > 0)
-        {
-            heat.remain_sec = (uint32_t) heat.set_time * 60;
-            xTimerChangePeriod(xHeatingTimer, pdMS_TO_TICKS(heat.remain_sec * 1000), 0);
-            xTimerStart(xHeatingTimer, 0);
-            xTimerStart(xRemainTimer, 0);
-        }
-    }
-
-    xSemaphoreGive(xHeatMutex);
+    if (level > HEAT_LEVEL_3 || !xHeatCtrlQueue) return false;
+    HeatMsg msg = {.type = MSG_SET_LEVEL, .param.level = level};
+    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
 }
+
+bool heat_set_timer(uint16_t minute)
+{
+    if (minute > 720 || !xHeatCtrlQueue) return false;
+    HeatMsg msg = {.type = MSG_SET_TIMER, .param.minute = minute};
+    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
+}
+
 void heat_status_switch(void)
 {
-    xSemaphoreTake(xHeatMutex, portMAX_DELAY);
-    HeatStatus status = heat.status;
-    xSemaphoreGive(xHeatMutex);
-
-    if (status == HEAT_RUNNING)
+    HeatStatus status = HEAT_STOP;
+    if (LOCK())
     {
-        heat_set_status(HEAT_STOP);
-        led_set_mode(LED_RF, LED_MODE_ON, 0);
+        status = heat.status;
+        UNLOCK();
     }
-
-    else
-    {
-        heat_set_status(HEAT_RUNNING);
-        led_set_mode(LED_RF, LED_MODE_OFF, 0);
-    }
+    heat_set_status(status == HEAT_RUNNING ? HEAT_STOP : HEAT_RUNNING);
 }
 
-// 设置加热档位（外部调用接口）
-void heat_set_level(HeatLevel level)
-{
-    xSemaphoreTake(xHeatMutex, portMAX_DELAY);
-
-    switch (level)
-    {
-        case HEAT_LEVEL_1:
-            heat.target_temperature = 35.0f;
-            break;
-        case HEAT_LEVEL_2:
-            heat.target_temperature = 45.0f;
-            break;
-        case HEAT_LEVEL_3:
-            heat.target_temperature = 55.0f;
-            break;
-        default:
-            heat.target_temperature = 0.0f;
-            break;
-    }
-    heat.level = level;
-    xSemaphoreGive(xHeatMutex);
-}
 void heat_level_up(void)
 {
-
-    int8_t level = heat.level + 1;
-    if (level > HEAT_LEVEL_3) level = HEAT_LEVEL_3;
-    heat_set_level((HeatLevel) level);
+    HeatLevel new_level = HEAT_LEVEL_1;
+    if (LOCK())
+    {
+        new_level = (heat.level < HEAT_LEVEL_3) ? (heat.level + 1) : HEAT_LEVEL_3;
+        UNLOCK();
+    }
+    if (new_level == HEAT_LEVEL_3) { buzzer_beep(5); }
+    heat_set_level(new_level);
 }
+
 void heat_level_down(void)
 {
-    int8_t level = heat.level - 1;
-    if (level < HEAT_LEVEL_1) level = HEAT_LEVEL_1;
-    heat_set_level((HeatLevel) level);
+    HeatLevel new_level = HEAT_LEVEL_3;
+    if (LOCK())
+    {
+        new_level = (heat.level > HEAT_LEVEL_1) ? (heat.level - 1) : HEAT_LEVEL_1;
+        UNLOCK();
+    }
+    if (new_level == HEAT_LEVEL_1) { buzzer_beep(5); }
+    heat_set_level(new_level);
 }

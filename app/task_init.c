@@ -1,12 +1,12 @@
 /**
  * @file task_init.c
  * @author ChenGaoxin (3180200199@qq.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2025-11-06
- * 
+ *
  * @copyright Copyright (c) 2025
- * 
+ *
  */
 #include "FreeRTOS.h"
 #include "task.h"

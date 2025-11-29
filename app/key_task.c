@@ -1,12 +1,12 @@
 /**
  * @file key_task.c
  * @author ChenGaoxin (3180200199@qq.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2025-11-06
- * 
+ *
  * @copyright Copyright (c) 2025
- * 
+ *
  */
 #include "key_task.h"
 #include "heat_task.h"
@@ -102,13 +102,15 @@ void key_event_handler(uint8_t key_id, key_event_t event)
                 case KEY_VOL_UP:
                     music_volume_control(VOLUME_UP);
                     break;
+                case KEY_HEAT:
+                    heat_status_switch();
+                    break;
                 case KEY_HEAT_PLUS:
                     heat_level_down();
                     break;
                 case KEY_HEAT_MINUS:
                     heat_level_up();
                     break;
-
                 case KEY_MIN10:
                     heat_set_timer(10);
                     break;
@@ -118,9 +120,7 @@ void key_event_handler(uint8_t key_id, key_event_t event)
                 case KEY_MIN60:
                     heat_set_timer(60);
                     break;
-                case KEY_HEAT:
-                    heat_status_switch();
-                    break;
+
                 case KEY_SHORTCUT_1:
                     // 短按处理
                     break;

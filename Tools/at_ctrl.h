@@ -36,6 +36,7 @@ void music_next(void);
 void music_prev(void);
 void music_volume_control(VOLUME_ENUM ctrl);
 void ble_mode(BTMODE_ENUM mode);
+void ble_query(void);
 void music_volume_set(uint8_t volume);
 /*------------------------------------test------------------------------------*/
 

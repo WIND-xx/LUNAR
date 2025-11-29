@@ -36,7 +36,8 @@ typedef enum
 /*-------------------------------------os-------------------------------------*/
 
 /*----------------------------------function----------------------------------*/
-bool decode_protocal(uint8_t *data, size_t len);
+bool decode_protocal(const uint8_t *data, size_t len);
+void protocal_uplode_heat(void);
 /*------------------------------------test------------------------------------*/
 
 #ifdef __cplusplus
