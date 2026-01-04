@@ -2,10 +2,19 @@
 #define BT401_H
 
 #include "FreeRTOS.h" // 用于TickType_t类型
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 // DMA缓冲区大小（需与源文件保持一致）
-#define BT401_DMA_BUFFER_SIZE 256
+#define BT401_DMA_BUFFER_SIZE 128
+
+// DMA缓冲区数量（可调整以增加接收并发帧数）
+#ifndef BT401_DMA_BUFFER_COUNT
+#define BT401_DMA_BUFFER_COUNT 4
+#endif
 
 // 帧结构：存储一帧完整数据（供外部解析使用）
 #pragma pack(1)

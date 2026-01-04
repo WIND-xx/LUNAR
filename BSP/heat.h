@@ -4,8 +4,7 @@
 
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*----------------------------------include-----------------------------------*/
@@ -21,7 +20,7 @@ extern "C"
 /*----------------------------------function----------------------------------*/
 void heat_init(void);
 void heat_deinit(void);
-void heat_on(float power);
+void heat_on(uint16_t power);
 void heat_off(void);
 /*------------------------------------test------------------------------------*/
 

@@ -34,11 +34,11 @@ void bt_start(void)
 {
     // 设置蓝牙设备名称为 "LUNAR"
     bt401_printf("AT+BD%s\r\n", BT_NAME);
-    vTaskDelay(BT_CMD_DELAY_MS / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     // 设置BLE广播名称为 "LUNAR_BLE"
     bt401_printf("AT+BM%s\r\n", BT_BLE_NAME);
-    vTaskDelay(BT_CMD_DELAY_MS / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     // 启用蓝牙后台运行模式（不主动连接）
     bt401_printf("AT+CG01\r\n");
