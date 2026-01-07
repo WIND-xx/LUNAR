@@ -4,9 +4,7 @@
 
 void heat_init(void)
 {
-    // 初始化加热控制硬件：启动PWM，初始占空比100%（规范写法）
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-    // 修正：ARR=99，100%占空比应设为99（而非100）
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 0);
 }
 
