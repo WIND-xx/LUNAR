@@ -16,7 +16,7 @@
 
 // 配置
 #define NTC_NUM 10
-#define MOVING_AVG_LEN 16
+#define MOVING_AVG_LEN 8
 #define LOW_PASS_ALPHA 0.3f   // 浮点低通系数
 #define ADC_MAX_VALUE 4095
 #define TEMP_MIN_VALID (-20.0f)   // 应用层有效范围
