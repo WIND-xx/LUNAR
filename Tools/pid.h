@@ -1,75 +1,79 @@
-
 /**
  * @file pid.h
- * @brief PID控制器模块（C语言面向对象风格）
+ * @brief 工业级PID控制器头文件（使用真实浮点温度）
+ *
+ * @note 所有温度值均为真实浮点数（单位：°C），如 25.5f 表示 25.5°C
  */
-#ifndef __PID_H
-#define __PID_H
 
-#include <stdint.h>
+#ifndef PID_H
+#define PID_H
+
 #include <stdbool.h>
+#include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef enum
+{
+    PID_MODE_MANUAL = 0,
+    PID_MODE_AUTO,
+    PID_MODE_STANDBY
+} pid_mode_t;
 
-/**
- * @brief PID控制器实例结构体
- */
-typedef struct {
-    float kp;             ///< 比例增益
-    float ki;             ///< 积分增益
-    float kd;             ///< 微分增益
-    float integral;       ///< 累积的积分项
-    float prev_input;     ///< 上一次的过程变量（用于测量微分）
-    float max_integral;   ///< 积分项的抗饱和限制
-    float min_output;     ///< 最小允许输出值
-    float max_output;     ///< 最大允许输出值
-    bool  first_run;      ///< 首次调用时跳过微分的标志
-} pid_t;
+typedef struct pid_controller_s
+{
+    // 公共参数
+    pid_mode_t mode;
+    float setpoint;    // 设定值 (°C)
+    float input;       // 输入值 (°C)
+    uint16_t output;   // 输出值 (PWM 0-1000)
 
-/**
- * @brief PID控制器句柄类型
- */
-typedef pid_t* pid_p;
+    // PID参数（基于°C）
+    float kp;
+    float ki;   // 单位：1/s
+    float kd;
 
-/**
- * @brief 初始化PID控制器实例
- *
- * @param[in] self        PID实例指针
- * @param[in] kp          比例增益
- * @param[in] ki          积分增益
- * @param[in] kd          微分增益
- * @param[in] max_integral 积分项的最大绝对值（抗饱和）
- * @param[in] min_output  最小输出值（例如：0.0f）
- * @param[in] max_output  最大输出值（例如：100.0f）
- */
-void pid_init(pid_p self, float kp, float ki, float kd,
-              float max_integral, float min_output, float max_output);
+    // 积分项
+    float integral;
+    float integral_limit;
+    float integral_deadband;   // (°C)
 
-/**
- * @brief 重置PID控制器的内部状态（清除积分等）
- *
- * @param[in] self PID实例指针
- */
-void pid_reset(pid_p self);
+    // 微分项
+    float last_input;
+    float last_error;
+    float derivative;
+    float d_filter_coef;
 
-/**
- * @brief 计算PID输出
- *
- * 使用"测量微分"方式以避免微分冲击。
- * 当误差超过±10.0时禁用积分，以防止大瞬态期间的饱和。
- *
- * @param[in] self        PID实例指针
- * @param[in] input       当前过程变量（例如：温度）
- * @param[in] setpoint    目标值
- * @param[in] dt_ms       自上次调用以来的时间间隔，单位为毫秒
- * @return                限幅后的输出，uint16_t类型（例如：占空比0~100或0~1000）
- */
-uint16_t pid_compute(pid_p self, float input, float setpoint, uint16_t dt_ms);
+    // 输出限制
+    uint16_t output_min;
+    uint16_t output_max;
 
-#ifdef __cplusplus
-}
-#endif
+    // 抗积分饱和
+    bool anti_windup;
+    float windup_threshold;   // (°C)
 
-#endif // __PID_H
+    // 死区控制（总宽度，单位：°C）
+    float deadband;   // 如 2.0f 表示 ±1.0°C（总宽 2°C）
+
+    // 微分先行
+    bool derivative_on_measurement;
+
+    // 内部状态
+    bool _first_sample;
+    uint32_t _last_update_ms;
+
+} pid_controller_t;
+
+// 初始化
+void pid_init(pid_controller_t* pid, float kp, float ki, float kd, float deadband, uint16_t out_min, uint16_t out_max);
+
+// 计算输出（必须传时间戳）
+uint16_t pid_calc_with_time(pid_controller_t* pid, float measure, float setpoint, uint32_t current_time_ms);
+
+// 其他辅助函数
+void pid_reset(pid_controller_t* pid);
+void pid_set_mode(pid_controller_t* pid, pid_mode_t mode);
+void pid_set_tunings(pid_controller_t* pid, float kp, float ki, float kd);
+void pid_set_output_limits(pid_controller_t* pid, uint16_t min, uint16_t max);
+void pid_set_integral_params(pid_controller_t* pid, float deadband, float limit);
+void pid_set_derivative_filter(pid_controller_t* pid, float coef);
+
+#endif   // PID_H

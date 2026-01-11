@@ -36,7 +36,7 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
-
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-u _printf_float")
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
@@ -47,8 +47,8 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 file(GLOB_RECURSE PROJECT_SOURCES
-    BSP/*.c
-    Tools/*.c
+    bsp/*.c
+    tools/*.c
     app/*.c
 )
 
@@ -57,9 +57,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    BSP
+    bsp
     app
-    Tools
+    tools
 )
 
 # Add project symbols (macros)
@@ -72,7 +72,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
-)
+)   
+
 # 生成 HEX 和 BIN 文件
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${CMAKE_PROJECT_NAME}.hex
@@ -80,3 +81,4 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     BYPRODUCTS ${CMAKE_PROJECT_NAME}.hex ${CMAKE_PROJECT_NAME}.bin
     COMMENT "Generating HEX and binary files"
 )
+

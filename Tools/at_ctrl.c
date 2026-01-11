@@ -16,10 +16,10 @@
 #include "task.h"
 #include <stdint.h>
 
-#define BT_CMD_DELAY_MS 50 // Standard delay between AT commands
-#define BT_NAME         "LUNAR"
-#define BT_BLE_NAME     "LUNAR_BLE"
-#define DEVICES_TYPE_U  1
+#define BT_CMD_DELAY_MS 50   // Standard delay between AT commands
+#define BT_NAME "LUNAR"
+#define BT_BLE_NAME "LUNAR_BLE"
+#define DEVICES_TYPE_U 1
 // #define DEVICES_TYPE_N  1
 
 /**
@@ -58,11 +58,11 @@ void bt_start(void)
 #ifdef DEVICES_TYPE_N
     // 设置上电等待状态（等待主控进一步指令）
     bt401_printf("AT+CP01\r\n");
-#endif // DEBUG
+#endif   // DEBUG
 #ifdef DEVICES_TYPE_U
-    bt401_printf("AT+CN00\r\n"); // 关闭提示音
+    bt401_printf("AT+CN00\r\n");   // 关闭提示音
     vTaskDelay(pdMS_TO_TICKS(50));
-    ble_mode(BTMODE_BT); // 直接进入蓝牙模式
+    ble_mode(BTMODE_BT);   // 直接进入蓝牙模式
     vTaskDelay(pdMS_TO_TICKS(50));
 #endif
 }
@@ -97,7 +97,10 @@ void music_prev(void)
  */
 void music_volume_control(VOLUME_ENUM ctrl)
 {
-    if (ctrl != VOLUME_UP && ctrl != VOLUME_DOWN) { return; }
+    if (ctrl != VOLUME_UP && ctrl != VOLUME_DOWN)
+    {
+        return;
+    }
 
     bt401_printf("AT+C%c\r\n", (ctrl == VOLUME_UP) ? 'E' : 'F');
 }
@@ -111,7 +114,7 @@ void music_volume_set(uint8_t volume)
  */
 void ble_mode(BTMODE_ENUM mode)
 {
-    const char *cmd = NULL;
+    const char* cmd = NULL;
 
     switch (mode)
     {
@@ -128,8 +131,7 @@ void ble_mode(BTMODE_ENUM mode)
             cmd = "AT+CM04\r\n";
             led_set_mode(LED_MUSIC, LED_MODE_ON, 0);
             break;
-        default:
-            return;
+        default: return;
     }
 
     bt401_printf(cmd);
