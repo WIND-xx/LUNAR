@@ -46,13 +46,34 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add sources to executable
-file(GLOB_RECURSE PROJECT_SOURCES
-    bsp/*.c
-    tools/*.c
-    app/*.c
+set(PROJECT_SOURCES
+    # BSP sources
+    bsp/bsp_rtc.c
+    bsp/bt401.c
+    bsp/buzzer.c
+    bsp/heat.c
+    bsp/key.c
+    bsp/led.c
+    bsp/ntc.c
+    
+    # Tools sources
+    tools/at_ctrl.c
+    tools/crc16.c
+    tools/pid.c
+    # tools/ring_buffer.c
+    
+    # App sources
+    app/BufferProcess.c
+    app/at_process.c
+    app/heat_task.c
+    app/key_task.c
+    app/protocal.c
+    app/task_init.c
+    # app/at_command_manager.c
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
+
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE

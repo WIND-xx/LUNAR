@@ -18,9 +18,10 @@
 static SemaphoreHandle_t xBt401TxMutex = NULL;
 
 // 可配置数量的DMA缓冲区
-static uint8_t           dma_buffer[BT401_DMA_BUFFER_COUNT][BT401_DMA_BUFFER_SIZE];
-static volatile uint8_t  current_dma_buf = 0;                          // 当前DMA使用的缓冲区索引
-static volatile uint16_t buffer_lengths[BT401_DMA_BUFFER_COUNT] = {0}; // 各缓冲区数据长度
+// 确保DMA缓冲区内存对齐，提高性能
+static __ALIGN_BEGIN uint8_t dma_buffer[BT401_DMA_BUFFER_COUNT][BT401_DMA_BUFFER_SIZE] __ALIGN_END;
+static volatile uint8_t current_dma_buf                         = 0;     // 当前DMA使用的缓冲区索引
+static volatile uint16_t buffer_lengths[BT401_DMA_BUFFER_COUNT] = {0};   // 各缓冲区数据长度
 
 // 就绪队列：从ISR发送就绪缓冲区索引到处理任务
 static QueueHandle_t xBt401ReadyQ = NULL;
@@ -52,7 +53,7 @@ void bt401_init(void)
 }
 
 // UART Rx Event Callback - 关键：捕获完整帧并切换缓冲区
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
@@ -88,7 +89,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 }
 
 // 原始字节发送（带互斥保护）
-uint8_t bt401_sendbytes(uint8_t *buf, uint16_t len)
+uint8_t bt401_sendbytes(uint8_t* buf, uint16_t len)
 {
     if (xBt401TxMutex == NULL) return 1;
 
@@ -101,7 +102,7 @@ uint8_t bt401_sendbytes(uint8_t *buf, uint16_t len)
 }
 
 // 线程安全的 printf 风格发送
-int bt401_printf(const char *format, ...)
+int bt401_printf(const char* format, ...)
 {
     if (xBt401TxMutex == NULL) return -1;
 
@@ -109,7 +110,7 @@ int bt401_printf(const char *format, ...)
 
 #define BT401_PRINTF_BUF_SIZE 128
     char buf[BT401_PRINTF_BUF_SIZE];
-    int  len;
+    int len;
 
     va_list args;
     va_start(args, format);
@@ -118,27 +119,27 @@ int bt401_printf(const char *format, ...)
 
     if (len < 0)
         len = 0;
-    else if ((size_t) len >= sizeof(buf))
+    else if ((size_t)len >= sizeof(buf))
         len = sizeof(buf) - 1;
 
-    HAL_StatusTypeDef status = HAL_UART_Transmit(&huart3, (uint8_t *) buf, len, HAL_MAX_DELAY);
+    HAL_StatusTypeDef status = HAL_UART_Transmit(&huart3, (uint8_t*)buf, len, HAL_MAX_DELAY);
     xSemaphoreGive(xBt401TxMutex);
 
     return (status == HAL_OK) ? len : 0;
 }
 
 // 供解析任务调用：获取一帧数据（阻塞等待）
-uint8_t bt401_get_frame(frame_t *frame, TickType_t timeout)
+uint8_t bt401_get_frame(frame_t* frame, TickType_t timeout)
 {
     if (xBt401ReadyQ == NULL) return 0;
 
     uint8_t idx;
     // 从队列获取就绪缓冲区索引（阻塞至 timeout）
-    if (xQueueReceive(xBt401ReadyQ, &idx, timeout) != pdTRUE) return 0; // 超时
+    if (xQueueReceive(xBt401ReadyQ, &idx, timeout) != pdTRUE) return 0;   // 超时
 
     // 拷贝数据到调用者提供的 frame
     frame->len = buffer_lengths[idx];
     memcpy(frame->data, dma_buffer[idx], frame->len);
 
-    return 1; // 成功
+    return 1;   // 成功
 }

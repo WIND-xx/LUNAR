@@ -20,9 +20,9 @@
 #include <stddef.h>
 #include <string.h>
 
-static void vBufferProcessTask(void *pvParameters)
+static void vBufferProcessTask(void* pvParameters)
 {
-    (void) pvParameters;
+    (void)pvParameters;
     frame_t frame = {0};
     bt401_init();
     bt_start();
@@ -41,10 +41,12 @@ static void vBufferProcessTask(void *pvParameters)
             {
                 decode_at_command(frame.data, frame.len);
             }
-            frame.len = 0;                             // 重置帧长度以准备下一次接收
-            memset(frame.data, 0, sizeof(frame.data)); // 清空数据缓冲区
+            frame.len = 0;                               // 重置帧长度以准备下一次接收
+            memset(frame.data, 0, sizeof(frame.data));   // 清空数据缓冲区
+        } else
+        {
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
-        else { vTaskDelay(pdMS_TO_TICKS(50)); }
     }
 }
 

@@ -1,5 +1,6 @@
 // at_command_manager.c
 #include "at_command_manager.h"
+#include "portable.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,12 +14,12 @@ static uint32_t generate_request_id(void)
 // 从响应数据中提取命令类型
 static at_cmd_type_t extract_cmd_type_from_response(at_command_manager_t* manager, const uint8_t* data, uint16_t len)
 {
-    if (len < 3) return AT_CMD_GENERIC;
+    if (len < 3U) return AT_CMD_GENERIC;
 
     // 转换为字符串进行前缀匹配
     char prefix[8] = {0};
-    int i;
-    for (i = 0; i < len && i < 7; i++)
+    uint16_t i;
+    for (i = 0; i < len && i < 7U; i++)
     {
         if (data[i] == '+' || data[i] == '\r' || data[i] == '\n') break;
         prefix[i] = data[i];
@@ -26,7 +27,7 @@ static at_cmd_type_t extract_cmd_type_from_response(at_command_manager_t* manage
     prefix[i] = '\0';
 
     // 在注册表中查找匹配的命令类型
-    for (int j = 0; j < manager->reg_count; j++)
+    for (uint8_t j = 0; j < manager->reg_count; j++)
     {
         if (strstr(prefix, manager->registrations[j].cmd_prefix) != NULL)
         {
@@ -49,21 +50,20 @@ static bool check_response_success(const uint8_t* data, uint16_t len)
     memcpy(response_str, data, len);
     response_str[len] = '\0';
 
-    for (int i = 0; i < sizeof(success_patterns) / sizeof(success_patterns[0]); i++)
+    for (int i = 0; i < (int)sizeof(success_patterns) / (int)sizeof(success_patterns[0]); i++)
     {
         if (strstr(response_str, success_patterns[i]) != NULL)
         {
             return true;
         }
     }
-
     return false;
 }
 
 // 初始化AT命令管理器
 at_command_manager_t* at_command_manager_init(void)
 {
-    at_command_manager_t* manager = malloc(sizeof(at_command_manager_t));
+    at_command_manager_t* manager = pvPortMalloc(sizeof(at_command_manager_t));
     if (!manager) return NULL;
 
     memset(manager, 0, sizeof(at_command_manager_t));
@@ -120,7 +120,7 @@ bool at_send_command_async(at_command_manager_t* manager, at_cmd_type_t cmd_type
     request.sender_task = xTaskGetCurrentTaskHandle();
 
     // 复制命令数据
-    request.cmd_data = malloc(cmd_len);
+    request.cmd_data = pvPortMalloc(cmd_len);
     if (!request.cmd_data) return false;
 
     memcpy(request.cmd_data, cmd_data, cmd_len);
@@ -175,13 +175,13 @@ bool at_send_command_sync(at_command_manager_t* manager, at_cmd_type_t cmd_type,
     // 超时，从待处理列表中移除请求
     if (xSemaphoreTake(manager->mutex, portMAX_DELAY) == pdPASS)
     {
-        for (int i = 0; i < manager->pending_count; i++)
+        for (uint8_t i = 0; i < manager->pending_count; i++)
         {
             if (manager->pending_requests[i].request_id == request_id)
             {
                 free(manager->pending_requests[i].cmd_data);
                 // 移除请求
-                for (int j = i; j < manager->pending_count - 1; j++)
+                for (uint8_t j = i; j < manager->pending_count - 1; j++)
                 {
                     manager->pending_requests[j] = manager->pending_requests[j + 1];
                 }
@@ -199,7 +199,7 @@ bool at_send_command_sync(at_command_manager_t* manager, at_cmd_type_t cmd_type,
 // 处理接收到的AT响应帧
 void at_process_received_frame(at_command_manager_t* manager, const uint8_t* data, uint16_t len)
 {
-    if (len < 2) return;
+    if (len < 2U) return;
 
     at_response_t response;
     at_request_t* matched_request = NULL;
@@ -212,7 +212,7 @@ void at_process_received_frame(at_command_manager_t* manager, const uint8_t* dat
     response.status     = AT_RESPONSE_RECEIVED;
 
     // 复制响应数据
-    response.response_data = malloc(len);
+    response.response_data = pvPortMalloc(len);
     if (!response.response_data) return;
 
     memcpy(response.response_data, data, len);
@@ -221,7 +221,7 @@ void at_process_received_frame(at_command_manager_t* manager, const uint8_t* dat
     // 在待处理列表中查找匹配的请求
     if (xSemaphoreTake(manager->mutex, portMAX_DELAY) == pdPASS)
     {
-        for (int i = 0; i < manager->pending_count; i++)
+        for (uint8_t i = 0; i < manager->pending_count; i++)
         {
             if (manager->pending_requests[i].cmd_type == response.cmd_type)
             {
@@ -237,7 +237,7 @@ void at_process_received_frame(at_command_manager_t* manager, const uint8_t* dat
 
             // 从待处理列表中移除
             free(matched_request->cmd_data);
-            for (int i = matched_index; i < manager->pending_count - 1; i++)
+            for (uint8_t i = matched_index; i < manager->pending_count - 1; i++)
             {
                 manager->pending_requests[i] = manager->pending_requests[i + 1];
             }
@@ -254,7 +254,7 @@ void at_process_received_frame(at_command_manager_t* manager, const uint8_t* dat
     }
 
     // 调用注册的处理器
-    for (int i = 0; i < manager->reg_count; i++)
+    for (uint8_t i = 0; i < manager->reg_count; i++)
     {
         if (manager->registrations[i].cmd_type == response.cmd_type && manager->registrations[i].handler)
         {
@@ -273,7 +273,7 @@ void at_check_timeouts(at_command_manager_t* manager)
 
     if (xSemaphoreTake(manager->mutex, 0) == pdPASS)
     {
-        for (int i = 0; i < manager->pending_count; i++)
+        for (uint8_t i = 0; i < manager->pending_count; i++)
         {
             uint32_t elapsed = (current_ticks - manager->pending_requests[i].timestamp) * 1000 / configTICK_RATE_HZ;
 
@@ -290,7 +290,7 @@ void at_check_timeouts(at_command_manager_t* manager)
                 timeout_response.timestamp     = current_ticks;
 
                 // 调用处理器通知超时
-                for (int j = 0; j < manager->reg_count; j++)
+                for (uint8_t j = 0; j < manager->reg_count; j++)
                 {
                     if (manager->registrations[j].cmd_type == timeout_response.cmd_type &&
                         manager->registrations[j].handler)
@@ -306,7 +306,7 @@ void at_check_timeouts(at_command_manager_t* manager)
                 free(manager->pending_requests[i].cmd_data);
 
                 // 从列表中移除
-                for (int j = i; j < manager->pending_count - 1; j++)
+                for (uint8_t j = i; j < manager->pending_count - 1; j++)
                 {
                     manager->pending_requests[j] = manager->pending_requests[j + 1];
                 }
