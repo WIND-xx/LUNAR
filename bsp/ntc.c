@@ -16,8 +16,8 @@
 
 // 配置
 #define NTC_NUM 5
-#define MOVING_AVG_LEN 8
-#define LOW_PASS_ALPHA 0.5f   // 浮点低通系数
+#define MOVING_AVG_LEN 10
+#define LOW_PASS_ALPHA 0.3f   // 浮点低通系数
 #define ADC_MAX_VALUE 4095
 #define TEMP_MIN_VALID (-20.0f)   // 应用层有效范围
 #define TEMP_MAX_VALID (100.0f)
@@ -109,11 +109,11 @@ static void interpolate_temperature_simple(uint32_t adc, float* p_temp)
     // 使用二分查找定位ADC值所在的区间
     uint8_t left  = 0;
     uint8_t right = NTC_TABLE_SIZE - 1;
-    
+
     while (right - left > 1)
     {
         uint8_t mid = left + (right - left) / 2;
-        
+
         if (NTC_adc_table[mid] <= adc)
         {
             right = mid;
@@ -200,7 +200,7 @@ int ntc_read(float* temperature)
         return -1;
     }
 
-    float raw_temp;
+    float raw_temp = 25.0f;
     interpolate_temperature_simple(adc_val, &raw_temp);
 
     // 一阶低通滤波

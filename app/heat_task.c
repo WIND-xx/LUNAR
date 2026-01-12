@@ -283,18 +283,18 @@ void heat_control_task(void* arg)
     // PID 控制器实例
     pid_controller_t heater_pid;
     uint8_t ntc_fail_count    = 0;
-    TickType_t control_period = pdMS_TO_TICKS(1000);   // 初始周期
+    TickType_t control_period = pdMS_TO_TICKS(500);   // 固定 500ms
 
     pid_init(&heater_pid,
              20.0f,   // Kp
-             0.5f,    // Ki（根据实际情况调整，0可能不合适）
-             5.0f,    // Kd
+             3.0f,    // Ki
+             1.0f,    // Kd
              1.0f,    // 死区（1°C总宽，即±0.5°C内不调节）
              0,       // 输出下限
-             1000);   // 输出上限
+             99);     // 输出上限
 
     // 积分参数：小死区，合理限幅
-    pid_set_integral_params(&heater_pid, 2.0f, 100.0f);
+    pid_set_integral_params(&heater_pid, 0.5f, 30.0f);
     pid_set_derivative_filter(&heater_pid, 0.1f);   // 滤波稍弱，让 D 起作用
     // 初始化硬件
     heat_init();
@@ -322,16 +322,6 @@ void heat_control_task(void* arg)
             // 锁失败时保守处理：停止加热
             status      = HEAT_STOP;
             target_temp = 35.0f;   // 默认值，实际不会使用
-        }
-
-        // 动态调整任务周期（仅影响 vTaskDelayUntil）
-        if (status == HEAT_RUNNING)
-        {
-            // 高温（>45.0°C）用更快控制周期
-            control_period = (target_temp > 45.0f) ? pdMS_TO_TICKS(500) : pdMS_TO_TICKS(1000);
-        } else
-        {
-            control_period = pdMS_TO_TICKS(2000);
         }
 
         if (status == HEAT_RUNNING)
@@ -377,7 +367,7 @@ void heat_control_task(void* arg)
             ntc_fail_count = 0;
         }
 
-        // 按照动态周期休眠（保持平均执行频率）
+        // 按照固定 500ms 周期休眠
         vTaskDelayUntil(&xLastWakeTime, control_period);
     }
 }
