@@ -33,14 +33,14 @@ void do_reg_change_actions(RegisterID reg, uint16_t value)
     switch (reg)
     {
         case REG_HEATING_STATUS:
-            if (value == 0) { heat_set_status(HEAT_STOP); }
-            else { heat_set_status(HEAT_RUNNING); }
+            if (value == 0) { heat_status_set(HEAT_STOP); }
+            else { heat_status_set(HEAT_RUNNING); }
             break;
         case REG_HEATING_LEVEL:
-            heat_set_level((HeatLevel) value);
+            heat_level_set((HeatLevel) value);
             break;
         case REG_HEATING_TIMER:
-            heat_set_timer(value); // 设置定时（分钟）
+            heat_timer_set(value); // 设置定时（分钟）
             break;
         case REG_ALARM_SET_HIGH:
         case REG_ALARM_SET_LOW:

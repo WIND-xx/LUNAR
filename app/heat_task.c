@@ -283,12 +283,19 @@ void heat_control_task(void* arg)
     // PID 控制器实例
     pid_controller_t heater_pid;
     uint8_t ntc_fail_count    = 0;
-    TickType_t control_period = pdMS_TO_TICKS(100);   // 初始周期
+    TickType_t control_period = pdMS_TO_TICKS(1000);   // 初始周期
 
-    pid_init(&heater_pid, 20.0f, 0.0f, 5.0f, 50, 0, 1000);   // Ki=0
-    pid_set_integral_params(&heater_pid, 1.0f, 0.0f);        // 积分限幅=0（彻底禁用）
-    pid_set_derivative_filter(&heater_pid, 0.1f);            // 滤波稍弱，让 D 起作用
+    pid_init(&heater_pid,
+             20.0f,   // Kp
+             0.5f,    // Ki（根据实际情况调整，0可能不合适）
+             5.0f,    // Kd
+             1.0f,    // 死区（1°C总宽，即±0.5°C内不调节）
+             0,       // 输出下限
+             1000);   // 输出上限
 
+    // 积分参数：小死区，合理限幅
+    pid_set_integral_params(&heater_pid, 2.0f, 100.0f);
+    pid_set_derivative_filter(&heater_pid, 0.1f);   // 滤波稍弱，让 D 起作用
     // 初始化硬件
     heat_init();
 
@@ -337,8 +344,10 @@ void heat_control_task(void* arg)
                 ntc_fail_count = 0;
 
                 uint32_t current_time_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-                uint16_t pid_out         = pid_calc_with_time(
-                    &heater_pid, (int16_t)(curr_temp * 10.0f), (int16_t)(target_temp * 10.0f), current_time_ms);
+                uint16_t pid_out         = pid_calc_with_time(&heater_pid,
+                                                      curr_temp,     // 实际测量温度（浮点）
+                                                      target_temp,   // 目标温度（浮点）
+                                                      current_time_ms);
 
                 heat_on(pid_out);   // 输出 PWM 占空比（0~1000）
                 int16_t temp_scaled   = (int16_t)(curr_temp * 10.0f + 0.5f);
@@ -385,27 +394,12 @@ void heat_task_init(void)
     xTaskCreate(heat_control_task, "heat_task", 512, NULL, 3, NULL);
 }
 
-bool heat_set_status(HeatStatus status)
+bool heat_status_set(HeatStatus status)
 {
     if (!xHeatCtrlQueue) return false;
     HeatMsg msg = {.type = MSG_SET_STATUS, .param.status = status};
     return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
 }
-
-bool heat_set_level(HeatLevel level)
-{
-    if (level > HEAT_LEVEL_3 || !xHeatCtrlQueue) return false;
-    HeatMsg msg = {.type = MSG_SET_LEVEL, .param.level = level};
-    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
-}
-
-bool heat_set_timer(uint16_t minute)
-{
-    if (minute > 720 || !xHeatCtrlQueue) return false;
-    HeatMsg msg = {.type = MSG_SET_TIMER, .param.minute = minute};
-    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
-}
-
 void heat_status_switch(void)
 {
     HeatStatus status = HEAT_STOP;
@@ -414,7 +408,15 @@ void heat_status_switch(void)
         status = heat.status;
         UNLOCK();
     }
-    heat_set_status(status == HEAT_RUNNING ? HEAT_STOP : HEAT_RUNNING);
+    heat_status_set(status == HEAT_RUNNING ? HEAT_STOP : HEAT_RUNNING);
+}
+
+
+bool heat_level_set(HeatLevel level)
+{
+    if (level > HEAT_LEVEL_3 || !xHeatCtrlQueue) return false;
+    HeatMsg msg = {.type = MSG_SET_LEVEL, .param.level = level};
+    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
 }
 
 void heat_level_up(void)
@@ -429,7 +431,7 @@ void heat_level_up(void)
     {
         buzzer_beep(5);
     }
-    heat_set_level(new_level);
+    heat_level_set(new_level);
 }
 
 void heat_level_down(void)
@@ -444,5 +446,12 @@ void heat_level_down(void)
     {
         buzzer_beep(5);
     }
-    heat_set_level(new_level);
+    heat_level_set(new_level);
+}
+
+bool heat_timer_set(uint16_t minute)
+{
+    if (minute > 720 || !xHeatCtrlQueue) return false;
+    HeatMsg msg = {.type = MSG_SET_TIMER, .param.minute = minute};
+    return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
 }

@@ -31,16 +31,15 @@ typedef struct
 // 初始化加热任务及定时相关资源
 void heat_task_init(void);
 
-// 设置加热定时（外部调用，如Modbus任务）
-bool heat_set_timer(uint16_t minute);
-
 // 启动/停止加热（外部调用）
-bool heat_set_status(HeatStatus status);
+bool heat_status_set(HeatStatus status);
 void heat_status_switch(void);
 
 // 设置加热档位（外部调用）
-bool heat_set_level(HeatLevel level);
+bool heat_level_set(HeatLevel level);
 void heat_level_up(void);
 void heat_level_down(void);
+// 设置加热定时（外部调用，如Modbus任务）
+bool heat_timer_set(uint16_t minute);
 
 #endif   // HEAT_TASK_H

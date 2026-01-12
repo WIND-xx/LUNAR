@@ -15,9 +15,9 @@
 #include <stdint.h>
 
 // 配置
-#define NTC_NUM 10
+#define NTC_NUM 5
 #define MOVING_AVG_LEN 8
-#define LOW_PASS_ALPHA 0.3f   // 浮点低通系数
+#define LOW_PASS_ALPHA 0.5f   // 浮点低通系数
 #define ADC_MAX_VALUE 4095
 #define TEMP_MIN_VALID (-20.0f)   // 应用层有效范围
 #define TEMP_MAX_VALID (100.0f)
@@ -91,7 +91,7 @@ static uint32_t moving_average(uint32_t val)
 }
 
 
-// 简化的插值函数版本（更直观）
+// 简化的插值函数版本（使用二分查找优化）
 static void interpolate_temperature_simple(uint32_t adc, float* p_temp)
 {
     // 边界检查
@@ -106,28 +106,34 @@ static void interpolate_temperature_simple(uint32_t adc, float* p_temp)
         return;
     }
 
-    // 查找ADC值在表中的位置
-    for (uint8_t i = 0; i < NTC_TABLE_SIZE - 1; i++)
+    // 使用二分查找定位ADC值所在的区间
+    uint8_t left  = 0;
+    uint8_t right = NTC_TABLE_SIZE - 1;
+    
+    while (right - left > 1)
     {
-        // 找到ADC值所在的区间
-        if (adc <= NTC_adc_table[i] && adc >= NTC_adc_table[i + 1])
+        uint8_t mid = left + (right - left) / 2;
+        
+        if (NTC_adc_table[mid] <= adc)
         {
-            // 计算比例因子
-            float ratio = (float)(NTC_adc_table[i] - adc) / (float)(NTC_adc_table[i] - NTC_adc_table[i + 1]);
-
-            // 计算插值温度
-            *p_temp = (float)NTC_temperature_table[i] +
-                      ratio * (float)(NTC_temperature_table[i + 1] - NTC_temperature_table[i]);
-
-            // 限制在物理范围内
-            if (*p_temp < -40.0f) *p_temp = -40.0f;
-            if (*p_temp > 120.0f) *p_temp = 120.0f;
-            return;
+            right = mid;
+        } else
+        {
+            left = mid;
         }
     }
 
-    // 如果没找到（理论上不会发生），返回中间值
-    *p_temp = 25.0f;
+    // 此时left和right是相邻的索引，且adc在它们之间
+    // NTC_adc_table[right] <= adc <= NTC_adc_table[left]
+    if (NTC_adc_table[left] >= adc && NTC_adc_table[right] <= adc)
+    {
+        // 计算比例因子
+        float ratio = (float)(NTC_adc_table[left] - adc) / (float)(NTC_adc_table[left] - NTC_adc_table[right]);
+
+        // 计算插值温度
+        *p_temp = (float)NTC_temperature_table[left] +
+                  ratio * (float)(NTC_temperature_table[right] - NTC_temperature_table[left]);
+    }
 }
 
 static int ntc_sample_and_filter(uint32_t* p_adc_out)
@@ -195,8 +201,6 @@ int ntc_read(float* temperature)
     }
 
     float raw_temp;
-
-    // 使用简化的插值函数
     interpolate_temperature_simple(adc_val, &raw_temp);
 
     // 一阶低通滤波
@@ -214,8 +218,8 @@ int ntc_read(float* temperature)
 
     *temperature = filtered_temp;
 
-    // 应用层有效范围检查（-20.0 ~ 100.0°C）
-    if (filtered_temp < TEMP_MIN_VALID || filtered_temp > TEMP_MAX_VALID)
+    // 有效范围检查
+    if (filtered_temp <= TEMP_MIN_VALID || filtered_temp >= TEMP_MAX_VALID)
     {
         return -1;   // 温度超出应用有效范围
     }
@@ -228,30 +232,4 @@ int ntc_get_adc_value(uint32_t* adc_value)
 {
     if (!adc_value) return -1;
     return ntc_sample_and_filter(adc_value);
-}
-
-// 批量采样并平均（提高精度）
-int ntc_read_average(float* temperature, uint8_t samples)
-{
-    if (!temperature || samples == 0) return -1;
-
-    float sum             = 0.0f;
-    uint8_t valid_samples = 0;
-
-    for (uint8_t i = 0; i < samples; i++)
-    {
-        float temp;
-        if (ntc_read(&temp) == 0)
-        {
-            sum += temp;
-            valid_samples++;
-        }
-        // 采样间隔
-        osDelay(20);
-    }
-
-    if (valid_samples == 0) return -1;
-
-    *temperature = sum / (float)valid_samples;
-    return 0;
 }

@@ -112,13 +112,13 @@ void key_event_handler(uint8_t key_id, key_event_t event)
                     heat_level_up();
                     break;
                 case KEY_MIN10:
-                    heat_set_timer(10);
+                    heat_timer_set(10);
                     break;
                 case KEY_MIN30:
-                    heat_set_timer(30);
+                    heat_timer_set(30);
                     break;
                 case KEY_MIN60:
-                    heat_set_timer(60);
+                    heat_timer_set(60);
                     break;
 
                 case KEY_SHORTCUT_1:
@@ -148,7 +148,7 @@ void key_event_handler(uint8_t key_id, key_event_t event)
                 case KEY_MIN10:
                 case KEY_MIN30:
                 case KEY_MIN60:
-                    heat_set_timer(0);  // 取消定时
+                    heat_timer_set(0);  // 取消定时
                     led_time_select(0); // 关闭时间指示灯
                     break;
                 case KEY_SHORTCUT_1:
