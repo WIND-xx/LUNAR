@@ -1,32 +1,41 @@
+// heat.c
 #include "heat.h"
-#include "stm32f103xb.h"
+#include "pwm_driver.h"
 #include "tim.h"
+
+
+static pwm_driver_t s_heat_pwm;
 
 void heat_init(void)
 {
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 0);
+    s_heat_pwm.htim       = &htim1;
+    s_heat_pwm.channel    = TIM_CHANNEL_4;
+    s_heat_pwm.resolution = htim1.Init.Period + 1;   // 100（因为 Period=99）
+
+    pwm_driver_start(&s_heat_pwm);
+    heat_off();   // 初始关闭
 }
 
 void heat_deinit(void)
 {
-    // 反初始化加热控制硬件
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+    pwm_driver_stop(&s_heat_pwm);
 }
 
 void heat_on(uint16_t power)
 {
-    // 设置加热功率，power 范围为 0 到 100（百分比）
     if (power > 100) power = 100;
 
-    // 修正：计算CCR值时直接乘以ARR（而非ARR+1），避免超过ARR
-    uint32_t arr_val = __HAL_TIM_GET_AUTORELOAD(&htim1);
-    uint32_t pulse   = (uint32_t)((power / 100.0f) * arr_val);
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, pulse);
+    // 整数运算：duty = (power * resolution) / 100
+    uint32_t duty = (uint32_t)power * s_heat_pwm.resolution / 100U;
+    if (duty >= s_heat_pwm.resolution)
+    {
+        duty = s_heat_pwm.resolution - 1;
+    }
+
+    pwm_driver_set_duty(&s_heat_pwm, duty);
 }
 
 void heat_off(void)
 {
-    // 关闭加热：占空比0%
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 0);
+    pwm_driver_set_duty(&s_heat_pwm, 0);
 }

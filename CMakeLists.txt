@@ -60,6 +60,7 @@ set(PROJECT_SOURCES
     tools/at_ctrl.c
     tools/crc16.c
     tools/pid.c
+    tools/pwm_driver.c
     # tools/ring_buffer.c
     
     # App sources

@@ -41,12 +41,12 @@ void MX_TIM1_Init(void)
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
     /* USER CODE BEGIN TIM1_Init 1 */
-
+    // PWM频率 = 64MHz / (64-1+1) / (100-1+1)=10000Hz;占空比范围0~100
     /* USER CODE END TIM1_Init 1 */
     htim1.Instance               = TIM1;
-    htim1.Init.Prescaler         = 640 - 1;
+    htim1.Init.Prescaler         = 64 - 1;
     htim1.Init.CounterMode       = TIM_COUNTERMODE_UP;
-    htim1.Init.Period            = 100 - 1;   // PWM频率 = 64MHz / (640-1+1) / (100-1+1)=1000Hz;占空比范围0~99
+    htim1.Init.Period            = 100 - 1;
     htim1.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     htim1.Init.RepetitionCounter = 0;
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
@@ -230,7 +230,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* timHandle)
         */
         GPIO_InitStruct.Pin   = GPIO_PIN_11;
         GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
         /* USER CODE BEGIN TIM1_MspPostInit 1 */
