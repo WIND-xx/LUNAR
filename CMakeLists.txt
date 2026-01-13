@@ -19,7 +19,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set the project name
-set(CMAKE_PROJECT_NAME LUNAR_RTOS)
+set(CMAKE_PROJECT_NAME LUNAR)
 
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
@@ -94,7 +94,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
-)   
+)
 
 # 生成 HEX 和 BIN 文件
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD

@@ -21,11 +21,11 @@
 
 void task_init(void)
 {
-    led_init();            // 初始化LED控制器
-    buzzer_init();         // 初始化蜂鸣器
-    key_task_init();       // 初始化按键任务
-    heat_task_init();      // 初始化加热任务
-    buffer_process_init(); // 初始化缓冲处理任务
+    led_init();              // 初始化LED控制器
+    buzzer_init();           // 初始化蜂鸣器
+    key_task_init();         // 初始化按键任务
+    heat_task_init();        // 初始化加热任务
+    buffer_process_init();   // 初始化缓冲处理任务
 }
 
 void do_reg_change_actions(RegisterID reg, uint16_t value)
@@ -33,14 +33,17 @@ void do_reg_change_actions(RegisterID reg, uint16_t value)
     switch (reg)
     {
         case REG_HEATING_STATUS:
-            if (value == 0) { heat_status_set(HEAT_STOP); }
-            else { heat_status_set(HEAT_RUNNING); }
+            if (value == 0)
+            {
+                heat_status_set(HEAT_STOP);
+            } else
+            {
+                heat_status_set(HEAT_RUNNING);
+            }
             break;
-        case REG_HEATING_LEVEL:
-            heat_level_set((HeatLevel) value);
-            break;
+        case REG_HEATING_LEVEL: heat_level_set((HeatLevel)value); break;
         case REG_HEATING_TIMER:
-            heat_timer_set(value); // 设置定时（分钟）
+            heat_timer_set(value);   // 设置定时（分钟）
             break;
         case REG_ALARM_SET_HIGH:
         case REG_ALARM_SET_LOW:

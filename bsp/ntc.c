@@ -17,13 +17,13 @@
 // 配置
 #define NTC_NUM 5
 #define MOVING_AVG_LEN 10
-#define LOW_PASS_ALPHA 0.3f   // 浮点低通系数
+#define LOW_PASS_ALPHA 0.3f // 浮点低通系数
 #define ADC_MAX_VALUE 4095
-#define TEMP_MIN_VALID (-20.0f)   // 应用层有效范围
+#define TEMP_MIN_VALID (-20.0f) // 应用层有效范围
 #define TEMP_MAX_VALID (100.0f)
 
 #ifndef NTC_USE_DMA
-#    define NTC_USE_DMA 0
+#define NTC_USE_DMA 0
 #endif
 
 // 查表数据（-40°C ~ +120°C）
@@ -52,21 +52,18 @@ static const int16_t NTC_temperature_table[161] = {
 // 全局状态
 static uint32_t adc_raw[NTC_NUM];
 static uint32_t adc_moving_buf[MOVING_AVG_LEN] = {0};
-static uint8_t moving_idx                      = 0;
-static float last_filtered_temp                = 25.0f;
-static uint8_t is_first                        = 1;
+static uint8_t moving_idx = 0;
+static float last_filtered_temp = 25.0f;
+static uint8_t is_first = 1;
 
 // 冒泡排序（小数组，可接受）
 static void bubble_sort(uint32_t* arr, uint8_t n)
 {
-    for (uint8_t i = 0; i < n - 1; i++)
-    {
-        for (uint8_t j = 0; j < n - i - 1; j++)
-        {
-            if (arr[j] > arr[j + 1])
-            {
+    for (uint8_t i = 0; i < n - 1; i++) {
+        for (uint8_t j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
                 uint32_t t = arr[j];
-                arr[j]     = arr[j + 1];
+                arr[j] = arr[j + 1];
                 arr[j + 1] = t;
             }
         }
@@ -76,7 +73,8 @@ static void bubble_sort(uint32_t* arr, uint8_t n)
 static uint32_t median_filter(uint32_t* buf, uint8_t n)
 {
     uint32_t tmp[NTC_NUM];
-    for (uint8_t i = 0; i < n; i++) tmp[i] = buf[i];
+    for (uint8_t i = 0; i < n; i++)
+        tmp[i] = buf[i];
     bubble_sort(tmp, n);
     return (n % 2 == 0) ? (tmp[n / 2 - 1] + tmp[n / 2]) / 2 : tmp[n / 2];
 }
@@ -84,49 +82,44 @@ static uint32_t median_filter(uint32_t* buf, uint8_t n)
 static uint32_t moving_average(uint32_t val)
 {
     adc_moving_buf[moving_idx++] = val;
-    if (moving_idx >= MOVING_AVG_LEN) moving_idx = 0;
+    if (moving_idx >= MOVING_AVG_LEN)
+        moving_idx = 0;
     uint32_t sum = 0;
-    for (uint8_t i = 0; i < MOVING_AVG_LEN; i++) sum += adc_moving_buf[i];
+    for (uint8_t i = 0; i < MOVING_AVG_LEN; i++)
+        sum += adc_moving_buf[i];
     return sum / MOVING_AVG_LEN;
 }
-
 
 // 简化的插值函数版本（使用二分查找优化）
 static void interpolate_temperature_simple(uint32_t adc, float* p_temp)
 {
     // 边界检查
-    if (adc >= NTC_adc_table[0])
-    {
-        *p_temp = -40.0f;   // 最低温度
+    if (adc >= NTC_adc_table[0]) {
+        *p_temp = -40.0f; // 最低温度
         return;
     }
-    if (adc <= NTC_adc_table[NTC_TABLE_SIZE - 1])
-    {
-        *p_temp = 120.0f;   // 最高温度
+    if (adc <= NTC_adc_table[NTC_TABLE_SIZE - 1]) {
+        *p_temp = 120.0f; // 最高温度
         return;
     }
 
     // 使用二分查找定位ADC值所在的区间
-    uint8_t left  = 0;
+    uint8_t left = 0;
     uint8_t right = NTC_TABLE_SIZE - 1;
 
-    while (right - left > 1)
-    {
+    while (right - left > 1) {
         uint8_t mid = left + (right - left) / 2;
 
-        if (NTC_adc_table[mid] <= adc)
-        {
+        if (NTC_adc_table[mid] <= adc) {
             right = mid;
-        } else
-        {
+        } else {
             left = mid;
         }
     }
 
     // 此时left和right是相邻的索引，且adc在它们之间
     // NTC_adc_table[right] <= adc <= NTC_adc_table[left]
-    if (NTC_adc_table[left] >= adc && NTC_adc_table[right] <= adc)
-    {
+    if (NTC_adc_table[left] >= adc && NTC_adc_table[right] <= adc) {
         // 计算比例因子
         float ratio = (float)(NTC_adc_table[left] - adc) / (float)(NTC_adc_table[left] - NTC_adc_table[right]);
 
@@ -145,26 +138,23 @@ static int ntc_sample_and_filter(uint32_t* p_adc_out)
     osKernelLock();
     HAL_ADC_Stop_DMA(&hadc1);
     uint32_t med = median_filter(adc_raw, NTC_NUM);
-    final_adc    = moving_average(med);
+    final_adc = moving_average(med);
     HAL_ADC_Start_DMA(&hadc1, adc_raw, NTC_NUM);
     osKernelUnlock();
 #else
     // 非DMA模式，轮询采样
-    for (uint8_t i = 0; i < NTC_NUM; i++)
-    {
+    for (uint8_t i = 0; i < NTC_NUM; i++) {
         HAL_ADC_Start(&hadc1);
-        if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-        {
+        if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
             adc_raw[i] = HAL_ADC_GetValue(&hadc1);
-        } else
-        {
-            adc_raw[i] = ADC_MAX_VALUE / 2;   // 采样失败时使用中间值
+        } else {
+            adc_raw[i] = ADC_MAX_VALUE / 2; // 采样失败时使用中间值
         }
         HAL_ADC_Stop(&hadc1);
-        osDelay(5);   // 短暂延时，让ADC稳定
+        osDelay(5); // 短暂延时，让ADC稳定
     }
     uint32_t med = median_filter(adc_raw, NTC_NUM);
-    final_adc    = moving_average(med);
+    final_adc = moving_average(med);
 #endif
 
     *p_adc_out = final_adc;
@@ -178,25 +168,37 @@ void ntc_init(void)
 #if NTC_USE_DMA
     HAL_ADC_Start_DMA(&hadc1, adc_raw, NTC_NUM);
 #else
-    // 初始化滑动平均缓冲区为中间值
-    for (uint8_t i = 0; i < MOVING_AVG_LEN; i++)
-    {
-        adc_moving_buf[i] = ADC_MAX_VALUE / 2;
+    // 预热采样：进行多次采样使滤波器达到稳定状态
+    for (uint8_t warmup = 0; warmup < MOVING_AVG_LEN; warmup++) {
+        uint32_t dummy_adc;
+        ntc_sample_and_filter(&dummy_adc);
+        osDelay(10); // 每次采样间隔10ms
     }
+
+    // 使用最后一次预热采样的结果初始化滑动平均缓冲区
+    uint32_t init_adc;
+    ntc_sample_and_filter(&init_adc);
+    for (uint8_t i = 0; i < MOVING_AVG_LEN; i++) {
+        adc_moving_buf[i] = init_adc;
+    }
+    moving_idx = 0; // 重置移动平均索引
+
+    // 初始化温度滤波器
+    float init_temp;
+    interpolate_temperature_simple(init_adc, &init_temp);
+    last_filtered_temp = init_temp;
 #endif
-    last_filtered_temp = 25.0f;
-    is_first           = 1;
-    moving_idx         = 0;
+    is_first = 1;
 }
 
 int ntc_read(float* temperature)
 {
-    if (!temperature) return -1;
+    if (!temperature)
+        return -1;
 
     uint32_t adc_val;
-    if (ntc_sample_and_filter(&adc_val) != 0)
-    {
-        *temperature = 25.0f;   // 默认温度
+    if (ntc_sample_and_filter(&adc_val) != 0) {
+        *temperature = 25.0f; // 默认温度
         return -1;
     }
 
@@ -205,23 +207,20 @@ int ntc_read(float* temperature)
 
     // 一阶低通滤波
     float filtered_temp;
-    if (is_first)
-    {
-        is_first           = 0;
+    if (is_first) {
+        is_first = 0;
         last_filtered_temp = raw_temp;
-        filtered_temp      = raw_temp;
-    } else
-    {
-        filtered_temp      = LOW_PASS_ALPHA * raw_temp + (1.0f - LOW_PASS_ALPHA) * last_filtered_temp;
+        filtered_temp = raw_temp;
+    } else {
+        filtered_temp = LOW_PASS_ALPHA * raw_temp + (1.0f - LOW_PASS_ALPHA) * last_filtered_temp;
         last_filtered_temp = filtered_temp;
     }
 
     *temperature = filtered_temp;
 
     // 有效范围检查
-    if (filtered_temp <= TEMP_MIN_VALID || filtered_temp >= TEMP_MAX_VALID)
-    {
-        return -1;   // 温度超出应用有效范围
+    if (filtered_temp <= TEMP_MIN_VALID || filtered_temp >= TEMP_MAX_VALID) {
+        return -1; // 温度超出应用有效范围
     }
 
     return 0;
@@ -230,6 +229,7 @@ int ntc_read(float* temperature)
 // 直接获取ADC值（用于调试）
 int ntc_get_adc_value(uint32_t* adc_value)
 {
-    if (!adc_value) return -1;
+    if (!adc_value)
+        return -1;
     return ntc_sample_and_filter(adc_value);
 }
