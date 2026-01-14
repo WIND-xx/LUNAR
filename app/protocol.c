@@ -7,13 +7,11 @@
 #include "FreeRTOS.h"
 #include "bsp_rtc.h"
 #include "bt401.h"
+#include "crc16.h"
 #include "task.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
-// CRC16函数声明（假设在crc16.h中）
-uint16_t Modbus_CRC16(const uint8_t* data, uint16_t len);
 
 /* 宏定义优化 */
 #define MODBUS_SLAVE_ADDR 0x01
@@ -630,7 +628,7 @@ void protocol_register_read_callback(RegisterReadCallback cb)
 }
 
 /**
- * @brief 上传加热状态（优化的实现）
+ * @brief 上传加热状态
  */
 void protocol_upload_heating_status(void)
 {

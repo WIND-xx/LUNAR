@@ -5,27 +5,17 @@
 #include <stdint.h>
 
 // 加热状态枚举
-typedef enum
-{
-    HEAT_STOP    = 0,
-    HEAT_RUNNING = 1
-} HeatStatus;
-typedef enum
-{
-    HEAT_LEVEL_1,
-    HEAT_LEVEL_2,
-    HEAT_LEVEL_3
-} HeatLevel;
+typedef enum { HEAT_STOP = 0, HEAT_RUNNING = 1 } HeatStatus;
+typedef enum { HEAT_LEVEL_1, HEAT_LEVEL_2, HEAT_LEVEL_3 } HeatLevel;
 
 // 外部声明加热控制结构体
-typedef struct
-{
-    HeatStatus status;   // 加热状态（0-停止，1-运行）
+typedef struct {
+    HeatStatus status; // 加热状态（0-停止，1-运行）
     HeatLevel level;
-    float target_temperature;   // 目标温度（℃）
-    uint16_t set_time;          // 设置的定时时间（分钟）
-    uint32_t remain_sec;        // 剩余时间（秒）
-    bool is_timing;             // 是否处于定时状态
+    float target_temperature; // 目标温度（℃）
+    uint16_t set_time;        // 设置的定时时间（分钟）
+    uint32_t remain_sec;      // 剩余时间（秒）
+    bool is_timing;           // 是否处于定时状态
 } Heat_t;
 
 // 初始化加热任务及定时相关资源
@@ -45,6 +35,6 @@ bool heat_timer_set(uint16_t minute);
 // 获取加热状态（外部调用）
 HeatStatus heat_status_get(void);
 HeatLevel heat_level_get(void);
-uint16_t heat_timer_get(void);
+uint16_t heat_remain_time_get(void);
 
-#endif   // HEAT_TASK_H
+#endif // HEAT_TASK_H

@@ -45,7 +45,7 @@ static void ble_data_process_task(void* pvParameters)
     }
 }
 
-void ble_data_process_task_start(void)
+void ble_data_process_task_init(void)
 {
     xTaskCreate(ble_data_process_task, "BufferProcessTask", 512, NULL, 5, NULL);
 }

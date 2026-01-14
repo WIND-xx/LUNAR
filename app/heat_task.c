@@ -423,9 +423,9 @@ HeatLevel heat_level_get(void)
     }
     return level;
 }
-uint32_t heat_remain_time_get(void)
+uint16_t heat_remain_time_get(void)
 {
-    uint32_t remain_min = 0;
+    uint16_t remain_min = 0;
     if (LOCK()) {
         remain_min = heat.remain_sec / 60;
         UNLOCK();

@@ -19,15 +19,6 @@
 #include "led.h"
 #include "protocol.h"
 
-void task_init(void)
-{
-    led_init();                    // 初始化LED控制器
-    buzzer_init();                 // 初始化蜂鸣器
-    key_task_init();               // 初始化按键任务
-    heat_task_init();              // 初始化加热任务
-    ble_data_process_task_start(); // 初始化缓冲处理任务
-    protocol_init();               // 初始化协议回调
-}
 static void my_register_write_callback(RegisterID reg, uint16_t value)
 {
     switch (reg) {
@@ -86,7 +77,7 @@ static uint16_t my_register_read_callback(RegisterID reg)
 
     case REG_HEATING_TIMER:
         // 读取剩余加热时间
-        value = heat_timer_get();
+        value = heat_remain_time_get();
         break;
 
     default:
@@ -105,4 +96,14 @@ void protocol_init(void)
 
     // 注册读回调（可选，如果不需要实时读取硬件数据可以不注册）
     protocol_register_read_callback(my_register_read_callback);
+}
+
+void task_init(void)
+{
+    led_init();                   // 初始化LED控制器
+    buzzer_init();                // 初始化蜂鸣器
+    key_task_init();              // 初始化按键任务
+    heat_task_init();             // 初始化加热任务
+    ble_data_process_task_init(); // 初始化缓冲处理任务
+    protocol_init();              // 初始化协议回调
 }
