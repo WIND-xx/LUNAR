@@ -18,9 +18,11 @@ extern "C" {
 #endif
 
 void ntc_init(void);
-
-// 浮点接口：温度 ℃（如 25.5f）
-int ntc_read(float* temperature);
+int ntc_read(float* temperature);// 浮点接口：温度 ℃（如 25.5f）
+int ntc_get_adc_value(uint32_t* adc_value);// 获取ADC采样值
+int ntc_get_raw_samples(uint32_t* buffer, uint8_t size);// 获取原始采样值
+void ntc_set_temperature_offset(float offset);// 设置温度补偿偏移量
+void ntc_reset_filter(void);// 重置滤波器状态
 
 #ifdef __cplusplus
 }
