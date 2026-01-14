@@ -9,6 +9,6 @@
 #define MODBUS_FRAME_MAX_LEN 64
 
 // 初始化函数
-void buffer_process_init(void);
+void ble_data_process_task_start(void);
 
 #endif // BUFFERPROCESS_H

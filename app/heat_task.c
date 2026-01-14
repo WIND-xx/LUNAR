@@ -17,7 +17,7 @@
 #include "pid.h"
 
 #include "FreeRTOS.h"
-#include "protocal.h"
+#include "protocol.h"
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
@@ -85,7 +85,7 @@ static void heat_stop_all(void)
         led_time_select(0);
         xTimerStop(xRemainTimer, 0);
         xTimerStop(xHeatingTimer, 0);
-        protocal_uplode_heat();
+        // protocal_uplode_heat();
     }
 }
 
@@ -125,7 +125,7 @@ static void process_heat_message(HeatMsg* msg)
             led_time_select(0);
             xTimerStop(xRemainTimer, 0);
             xTimerStop(xHeatingTimer, 0);
-            protocal_uplode_heat();
+            // protocol_upload_heat();
         }
         break;
     }
@@ -179,7 +179,7 @@ static void process_heat_message(HeatMsg* msg)
                     xTimerStart(xRemainTimer, 0);
                 }
             }
-            protocal_uplode_heat();
+            protocol_upload_heating_status();
         }
         break;
     }
@@ -207,7 +207,7 @@ static void process_heat_message(HeatMsg* msg)
             heat.target_temperature = new_target;
             UNLOCK();
         }
-        protocal_uplode_heat();
+        protocol_upload_heating_status();
         break;
     }
 
@@ -242,7 +242,7 @@ static void process_heat_message(HeatMsg* msg)
             xTimerStop(xHeatingTimer, 0);
             xTimerStop(xRemainTimer, 0);
         }
-        protocal_uplode_heat();
+        protocol_upload_heating_status();
         break;
     }
 
@@ -404,4 +404,31 @@ bool heat_timer_set(uint16_t minute)
         return false;
     HeatMsg msg = {.type = MSG_SET_TIMER, .param.minute = minute};
     return xQueueSend(xHeatCtrlQueue, &msg, 0) == pdPASS;
+}
+HeatStatus heat_status_get(void)
+{
+    HeatStatus status = HEAT_STOP;
+    if (LOCK()) {
+        status = heat.status;
+        UNLOCK();
+    }
+    return status;
+}
+HeatLevel heat_level_get(void)
+{
+    HeatLevel level = HEAT_LEVEL_1;
+    if (LOCK()) {
+        level = heat.level;
+        UNLOCK();
+    }
+    return level;
+}
+uint32_t heat_remain_time_get(void)
+{
+    uint32_t remain_min = 0;
+    if (LOCK()) {
+        remain_min = heat.remain_sec / 60;
+        UNLOCK();
+    }
+    return remain_min;
 }

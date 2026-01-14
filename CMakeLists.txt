@@ -36,7 +36,7 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
-target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-u _printf_float")
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
@@ -64,11 +64,11 @@ set(PROJECT_SOURCES
     # tools/ring_buffer.c
     
     # App sources
-    app/BufferProcess.c
+    app/frame_process.c
     app/at_process.c
     app/heat_task.c
     app/key_task.c
-    app/protocal.c
+    app/protocol.c
     app/task_init.c
     # app/at_command_manager.c
 )
@@ -104,3 +104,4 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMENT "Generating HEX and binary files"
 )
 
+# target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -u _printf_float)

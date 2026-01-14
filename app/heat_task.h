@@ -42,4 +42,9 @@ void heat_level_down(void);
 // 设置加热定时（外部调用，如Modbus任务）
 bool heat_timer_set(uint16_t minute);
 
+// 获取加热状态（外部调用）
+HeatStatus heat_status_get(void);
+HeatLevel heat_level_get(void);
+uint16_t heat_timer_get(void);
+
 #endif   // HEAT_TASK_H
