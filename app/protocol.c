@@ -7,13 +7,11 @@
 #include "FreeRTOS.h"
 #include "bsp_rtc.h"
 #include "bt401.h"
+#include "crc16.h"
 #include "task.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
-// CRC16函数声明（假设在crc16.h中）
-uint16_t Modbus_CRC16(const uint8_t* data, uint16_t len);
 
 /* 宏定义优化 */
 #define MODBUS_SLAVE_ADDR 0x01
