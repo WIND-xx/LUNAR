@@ -1,95 +1,67 @@
 /**
  * @file key.c
- * @author ChenGaoxin (3180200199@qq.com)
- * @brief
- * @version 0.1
- * @date 2025-09-19
- *
- * @copyright Copyright (c) 2025
- *
+ * @brief 矩阵键盘扫描驱动
+ * @version 1.1
  */
+
 #include "key.h"
 
-#define KEY1_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)
-#define KEY2_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_3)
-#define KEY3_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)
-#define KEY4_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
-#define KEY5_Input      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+/* 矩阵键盘行/列配置（编译期常量） */
+typedef struct {
+    uint16_t output_pin;       // 行驱动输出引脚
+    uint16_t input_pins[5];    // 列输入引脚列表（0表示无效）
+    uint8_t  key_values[5];    // 对应按键返回值
+} key_row_config_t;
 
-#define KEY6_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_3)
-#define KEY7_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)
-#define KEY8_Input      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
-#define KEY9_Input      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
+static const key_row_config_t key_rows[] = {
+    {GPIO_PIN_9, {GPIO_PIN_8, GPIO_PIN_3, GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_15}, {1, 2, 3, 4, 5}},
+    {GPIO_PIN_8, {GPIO_PIN_3, GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_15, 0},          {6, 7, 8, 9, 0}},
+    {GPIO_PIN_3, {GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_15, 0, 0},                    {12, 10, 11, 0, 0}},
+    {GPIO_PIN_5, {GPIO_PIN_4, GPIO_PIN_15, 0, 0, 0},                             {14, 13, 0, 0, 0}},
+    {GPIO_PIN_4, {GPIO_PIN_15, 0, 0, 0, 0},                                      {15, 0, 0, 0, 0}},
+};
 
-#define KEY10_Input     HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
-#define KEY11_Input     HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
-#define KEY12_Input     HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)
+#define KEY_ROW_COUNT (sizeof(key_rows) / sizeof(key_rows[0]))
 
-#define KEY14_Input     HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4)
-#define KEY13_Input     HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
-
-#define KEY15_Input     HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15)
-
-#define KEY_Power_Input HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)
 unsigned char get_key(void)
 {
-    if (HAL_GPIO_ReadPin(POWER_DC_GPIO_Port, POWER_DC_Pin) == 0)
-    {
-        return 18; // 电源键
+    if (HAL_GPIO_ReadPin(POWER_DC_GPIO_Port, POWER_DC_Pin) == 0) {
+        return KEY_POWER;
     }
 
-    uint8_t          Mode = 0;
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+    uint8_t          mode = KEY_NULL;
+    GPIO_InitTypeDef gpio_init = {0};
 
-    // 定义每一行的配置信息
-    typedef struct
-    {
-        uint16_t outputPin;     // 输出引脚
-        uint16_t inputPins[5];  // 输入引脚列表
-        uint8_t  modeValues[5]; // 对应的按键模式值
-    } KeyRowConfig;
+    for (uint8_t row = 0; row < KEY_ROW_COUNT; row++) {
+        const key_row_config_t *cfg = &key_rows[row];
 
-    // 配置每一行的键盘设置
-    KeyRowConfig rows[] = {{GPIO_PIN_9, {GPIO_PIN_8, GPIO_PIN_3, GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_15}, {1, 2, 3, 4, 5}},
-                           {GPIO_PIN_8, {GPIO_PIN_3, GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_15, 0}, {6, 7, 8, 9, 0}},
-                           {GPIO_PIN_3, {GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_15, 0, 0}, {12, 10, 11, 0, 0}},
-                           {GPIO_PIN_5, {GPIO_PIN_4, GPIO_PIN_15, 0, 0, 0}, {14, 13, 0, 0, 0}},
-                           {GPIO_PIN_4, {GPIO_PIN_15, 0, 0, 0, 0}, {15, 0, 0, 0, 0}}};
+        // 配置当前行为输出低电平
+        gpio_init.Pin   = cfg->output_pin;
+        gpio_init.Mode  = GPIO_MODE_OUTPUT_PP;
+        gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(GPIOB, &gpio_init);
+        HAL_GPIO_WritePin(GPIOB, cfg->output_pin, GPIO_PIN_RESET);
 
-    // 遍历每一行的配置
-    for (uint8_t i = 0; i < sizeof(rows) / sizeof(rows[0]); i++)
-    {
-        // 配置输出引脚
-        GPIO_InitStruct.Pin = rows[i].outputPin;
-        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-        HAL_GPIO_WritePin(GPIOB, rows[i].outputPin, GPIO_PIN_RESET);
+        // 扫描该行的所有列
+        for (uint8_t col = 0; col < 5; col++) {
+            uint16_t in_pin = cfg->input_pins[col];
+            if (in_pin == 0) continue;
 
-        // 配置输入引脚并检测按键
-        for (uint8_t j = 0; j < 5; j++)
-        {
-            if (rows[i].inputPins[j] != 0)
-            {
-                GPIO_InitStruct.Pin = rows[i].inputPins[j];
-                GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-                GPIO_InitStruct.Pull = GPIO_PULLUP;
-                HAL_GPIO_Init((rows[i].inputPins[j] == GPIO_PIN_15) ? GPIOA : GPIOB, &GPIO_InitStruct);
+            GPIO_TypeDef *port = (in_pin == GPIO_PIN_15) ? GPIOA : GPIOB;
 
-                // 检测按键是否按下
-                if (HAL_GPIO_ReadPin((rows[i].inputPins[j] == GPIO_PIN_15) ? GPIOA : GPIOB, rows[i].inputPins[j]) ==
-                    GPIO_PIN_RESET)
-                {
-                    Mode = rows[i].modeValues[j];
-                }
+            gpio_init.Pin  = in_pin;
+            gpio_init.Mode = GPIO_MODE_INPUT;
+            gpio_init.Pull = GPIO_PULLUP;
+            HAL_GPIO_Init(port, &gpio_init);
+
+            if (HAL_GPIO_ReadPin(port, in_pin) == GPIO_PIN_RESET) {
+                mode = cfg->key_values[col];
             }
         }
 
-        // 释放当前行的输出引脚
-        HAL_GPIO_WritePin(GPIOB, rows[i].outputPin, GPIO_PIN_SET);
+        // 释放当前行
+        HAL_GPIO_WritePin(GPIOB, cfg->output_pin, GPIO_PIN_SET);
     }
 
-    return Mode;
+    return mode;
 }

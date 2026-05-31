@@ -27,6 +27,7 @@
 #define WRITE_MULTI_MIN_LEN 9
 #define MAX_REGISTERS_PER_FRAME 125 // Modbus标准限制
 #define RESPONSE_BUF_SIZE 256
+#define HEATING_REG_COUNT  3       // 加热状态相关寄存器数量
 
 /* 寄存器描述表 */
 const RegisterDescriptor g_register_table[REG_COUNT] = {
@@ -75,7 +76,8 @@ static bool is_valid_register(RegisterID reg)
 }
 
 /**
- * @brief 检查寄存器访问权限
+ * @brief 
+ * 
  */
 static bool check_register_access(RegisterID reg, bool is_write)
 {
@@ -255,6 +257,30 @@ static ProtocolResult handle_write_registers(uint8_t slave_addr, uint16_t start,
         return PROTOCOL_ERR_INVALID_FRAME;
     }
 
+    // ---- 阶段1: 预验证所有寄存器（临界区外） ----
+    uint16_t bytes_processed = 0;
+    for (uint16_t i = 0; i < count; i++) {
+        RegisterID reg = start + i;
+
+        // UTC时间戳寄存器跳过单独验证（由组合逻辑处理）
+        if (reg == REG_UTC_TIMESTAMP_HIGH || reg == REG_UTC_TIMESTAMP_LOW) {
+            bytes_processed += 2;
+            continue;
+        }
+
+        uint16_t value = (data[bytes_processed] << 8) | data[bytes_processed + 1];
+        bytes_processed += 2;
+
+        if (!check_register_access(reg, true)) {
+            return PROTOCOL_ERR_WRITE_ONLY;
+        }
+
+        if (!validate_register_value(reg, value)) {
+            return PROTOCOL_ERR_INVALID_VALUE;
+        }
+    }
+
+    // ---- 阶段2: 原子写入所有寄存器（临界区内） ----
     REGISTER_ENTER_CRITICAL();
 
     // 处理特殊寄存器组合（如UTC时间戳）
@@ -265,14 +291,11 @@ static ProtocolResult handle_write_registers(uint8_t slave_addr, uint16_t start,
         }
     }
 
-    // 处理其他特殊寄存器
-    ProtocolResult result = PROTOCOL_SUCCESS;
-    uint16_t bytes_processed = 0;
-
+    bytes_processed = 0;
     for (uint16_t i = 0; i < count; i++) {
         RegisterID reg = start + i;
 
-        // 跳过已经处理的UTC时间戳寄存器
+        // 跳过已由 process_utc_timestamp 处理的UTC寄存器
         if (reg == REG_UTC_TIMESTAMP_HIGH || reg == REG_UTC_TIMESTAMP_LOW) {
             bytes_processed += 2;
             continue;
@@ -281,31 +304,26 @@ static ProtocolResult handle_write_registers(uint8_t slave_addr, uint16_t start,
         uint16_t value = (data[bytes_processed] << 8) | data[bytes_processed + 1];
         bytes_processed += 2;
 
-        // 检查访问权限
-        if (!check_register_access(reg, true)) {
-            result = PROTOCOL_ERR_WRITE_ONLY;
-            break;
-        }
-
-        // 验证值范围
-        if (!validate_register_value(reg, value)) {
-            result = PROTOCOL_ERR_INVALID_VALUE;
-            break;
-        }
-
-        // 写入寄存器
         g_registers[reg] = value;
-
-        // 调用写回调通知应用层
-        if (g_write_callback != NULL) {
-            g_write_callback(reg, value);
-        }
     }
 
     REGISTER_EXIT_CRITICAL();
 
-    if (result != PROTOCOL_SUCCESS) {
-        return result;
+    // ---- 阶段3: 通知应用层（临界区外，避免长时间关调度） ----
+    bytes_processed = 0;
+    for (uint16_t i = 0; i < count; i++) {
+        RegisterID reg = start + i;
+        if (reg == REG_UTC_TIMESTAMP_HIGH || reg == REG_UTC_TIMESTAMP_LOW) {
+            bytes_processed += 2;
+            continue;
+        }
+
+        uint16_t value = (data[bytes_processed] << 8) | data[bytes_processed + 1];
+        bytes_processed += 2;
+
+        if (g_write_callback != NULL) {
+            g_write_callback(reg, value);
+        }
     }
 
     // 构建成功响应
@@ -633,17 +651,15 @@ void protocol_register_read_callback(RegisterReadCallback cb)
 void protocol_upload_heating_status(void)
 {
     uint8_t response[RESPONSE_BUF_SIZE] = {0};
-    uint16_t resp_len = 0;
 
-    // 直接读取三个加热相关寄存器并构建响应
+    // 构建响应头：地址 + 功能码 + 字节数
     response[0] = MODBUS_SLAVE_ADDR;
     response[1] = MODBUS_FUNC_READ_HOLDING;
-    response[2] = 6; // 3个寄存器 × 2字节 = 6字节
+    response[2] = HEATING_REG_COUNT * 2; // N个寄存器 × 2字节
 
     REGISTER_ENTER_CRITICAL();
 
-    // 读取加热状态、档位和定时寄存器
-    for (int i = 0; i < 3; i++) {
+    for (uint8_t i = 0; i < HEATING_REG_COUNT; i++) {
         RegisterID reg = REG_HEATING_STATUS + i;
         uint16_t value;
 
@@ -653,17 +669,17 @@ void protocol_upload_heating_status(void)
             value = g_registers[reg];
         }
 
-        response[3 + (i * 2)] = (uint8_t)((value >> 8) & 0xFF);
-        response[4 + (i * 2)] = (uint8_t)(value & 0xFF);
+        response[3 + (i * 2)]     = (uint8_t)((value >> 8) & 0xFF);
+        response[3 + (i * 2) + 1] = (uint8_t)(value & 0xFF);
     }
 
     REGISTER_EXIT_CRITICAL();
 
-    resp_len = 3 + 6; // 3字节头部 + 6字节数据
+    uint16_t resp_len = 3 + (HEATING_REG_COUNT * 2);
 
     // 计算CRC并发送
     uint16_t crc = protocol_calc_crc16(response, resp_len);
-    response[resp_len] = (uint8_t)(crc & 0xFF);
+    response[resp_len]     = (uint8_t)(crc & 0xFF);
     response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
     bt401_sendbytes(response, resp_len + 2);

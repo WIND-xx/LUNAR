@@ -59,7 +59,7 @@ bool led_get(LED_Index idx);
 
 /**
  * @brief 时间指示灯控制：10/30/60分钟互斥显示
- * @param minutes 可选值：10/30/60（对应时间）、0xFF（全亮）、0（全灭）
+ * @param seconds 秒数，可选：0（全灭）、1~600（10min）、601~1800（30min）、>1800（60min）
  */
 void led_time_select(uint16_t seconds);
 

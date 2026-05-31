@@ -500,12 +500,24 @@ int ntc_get_raw_samples(uint32_t* buffer, uint8_t size)
     HAL_ADC_Stop_DMA(&hadc1);
 
     // 复制最新数据
+#if USE_DOUBLE_BUFFER
+    uint8_t ready_buf = active_buf ^ 1;
+    for (uint8_t i = 0; i < NTC_NUM; i++) {
+        uint8_t idx = (ADC_DMA_BUFFER_SIZE - NTC_NUM + i) & (ADC_DMA_BUFFER_SIZE - 1);
+        buffer[i] = adc_dma_buf[ready_buf][idx];
+    }
+#else
     for (uint8_t i = 0; i < NTC_NUM; i++) {
         uint8_t idx = (ADC_DMA_BUFFER_SIZE - NTC_NUM + i) % ADC_DMA_BUFFER_SIZE;
-        buffer[i] = adc_dma_buf[0][idx];
+        buffer[i] = adc_dma_buf[idx];
     }
+#endif
 
-    HAL_ADC_Start_DMA(&hadc1, adc_dma_buf[0], ADC_DMA_BUFFER_SIZE);
+#if USE_DOUBLE_BUFFER
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_dma_buf[active_buf], ADC_DMA_BUFFER_SIZE);
+#else
+    HAL_ADC_Start_DMA(&hadc1, adc_dma_buf, ADC_DMA_BUFFER_SIZE);
+#endif
     osKernelUnlock();
 #else
     // 非DMA模式，直接采样

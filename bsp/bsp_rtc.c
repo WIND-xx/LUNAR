@@ -1,20 +1,23 @@
 #include "bsp_rtc.h"
 #include <stdbool.h>
 
-// 备份寄存器相关定义
-#define BKP_INIT_REG   RTC_BKP_DR1 // 使用备份寄存器1
-#define BKP_INIT_MAGIC 0x1234      // 初始化标记
+/* 2000-01-01 00:00:00 对应的 Unix UTC 时间戳 */
+#define UNIX_EPOCH_OFFSET 946684800U
 
-// RTC句柄定义
+/* RTC备份寄存器 */
+#define BKP_INIT_REG   RTC_BKP_DR1
+#define BKP_INIT_MAGIC 0x1234
+
+/* 外部RTC句柄 */
 extern RTC_HandleTypeDef hrtc;
 
-// 内部函数声明
+/* 内部函数声明 */
 static bool     is_leap_year(uint16_t year);
 static uint8_t  get_days_in_month(uint8_t month, uint16_t year);
 static uint32_t rtc_get_counter(void);
 static void     rtc_set_counter(uint32_t counter);
 
-// 每月天数表(非闰年)
+/* 每月天数表（非闰年） */
 static const uint8_t days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 // 初始化RTC(使用HAL库的备份寄存器函数)
@@ -152,14 +155,14 @@ uint32_t RTC_GetUTC(void)
         counter2 = rtc_get_counter();
     } while (counter1 != counter2);
 
-    return counter1 + 946684800; // 加上2000年到1970年的秒数差
+    return counter1 + UNIX_EPOCH_OFFSET;
 }
 
 // 设置UTC时间戳
 HAL_StatusTypeDef RTC_SetUTC(uint32_t utc)
 {
     // 转换为2000年为基准的计数器值
-    uint32_t counter = utc - 946684800; // 946684800是2000-01-01 00:00:00的UTC时间戳
+    uint32_t counter = utc - UNIX_EPOCH_OFFSET;
 
     // 进入配置模式
     SET_BIT(RTC->CRL, RTC_CRL_CNF);
@@ -186,8 +189,7 @@ void RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime)
 {
     if (datetime == NULL) return;
 
-    // 转换为2000年为基准的秒数
-    uint32_t seconds = utc - 946684800; // 946684800是2000-01-01 00:00:00的UTC时间戳
+    uint32_t seconds = utc - UNIX_EPOCH_OFFSET;
 
     datetime->second = seconds % 60;
     seconds /= 60;
@@ -196,38 +198,33 @@ void RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime)
     seconds /= 60;
 
     datetime->hour = seconds % 24;
-    uint32_t days = seconds / 24;
+    uint32_t total_days = seconds / 24; // 保存总天数用于周计算
 
     // 计算年份(2000年开始)
+    uint32_t days = total_days;
     datetime->year = 0;
-    while (1)
-    {
-        uint16_t year = 2000 + datetime->year;
-        uint32_t days_in_year = is_leap_year(year) ? 366 : 365;
-
+    while (1) {
+        uint16_t yr = 2000 + datetime->year;
+        uint32_t days_in_year = is_leap_year(yr) ? 366 : 365;
         if (days < days_in_year) break;
-
         days -= days_in_year;
         datetime->year++;
     }
 
     // 计算月份和日期
     datetime->month = 1;
-    while (1)
-    {
-        uint16_t year = 2000 + datetime->year;
-        uint8_t  dim = get_days_in_month(datetime->month, year);
-
+    while (1) {
+        uint16_t yr = 2000 + datetime->year;
+        uint8_t  dim = get_days_in_month(datetime->month, yr);
         if (days < dim) break;
-
         days -= dim;
         datetime->month++;
     }
 
-    datetime->day = days + 1; // 天数从1开始
+    datetime->day = days + 1;
 
-    // 计算星期几 (2000-01-01是星期六)
-    datetime->weekday = (days + 6) % 7; // 0=星期日, 6=星期六
+    // 计算星期几：2000-01-01是星期六(6)，(total_days + 6) % 7 → 0=星期日
+    datetime->weekday = (total_days + 6) % 7;
 }
 
 // 从日期时间转换为UTC时间戳(完全自定义算法)
@@ -254,7 +251,7 @@ uint32_t RTC_DateTimeToUTC(RTC_DateTimeTypeDef *datetime)
     seconds = seconds * 86400 + datetime->hour * 3600 + datetime->minute * 60 + datetime->second;
 
     // 加上2000年到1970年的秒数差
-    return seconds + 946684800;
+    return seconds + UNIX_EPOCH_OFFSET;
 }
 
 // 内部函数：判断是否为闰年

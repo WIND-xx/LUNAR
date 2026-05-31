@@ -258,48 +258,23 @@ void led_time_select(uint16_t seconds)
 {
     if (led_mutex == NULL) return;
 
-    // 尝试获取锁，超时时间10ms
-    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE)
-    {
-        const uint32_t sec_10 = 10U * 60U; // 600
-        const uint32_t sec_30 = 30U * 60U; // 1800
+    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        static const uint32_t SEC_10 = 10U * 60U; // 600
+        static const uint32_t SEC_30 = 30U * 60U; // 1800
 
         // 先关闭所有时间指示灯
-        led_hw_set(LED_10MIN, false);
-        led_hw_set(LED_30MIN, false);
-        led_hw_set(LED_60MIN, false);
+        led_set_mode_internal(LED_10MIN, LED_MODE_OFF, 0);
+        led_set_mode_internal(LED_30MIN, LED_MODE_OFF, 0);
+        led_set_mode_internal(LED_60MIN, LED_MODE_OFF, 0);
 
-        // 默认全部设为 OFF
-        led_controls[LED_10MIN].mode = LED_MODE_OFF;
-        led_controls[LED_30MIN].mode = LED_MODE_OFF;
-        led_controls[LED_60MIN].mode = LED_MODE_OFF;
-
-        // 按用户要求的规则：
-        // seconds == 0 -> 全灭
-        // seconds > 30min -> 点亮 60min
-        // 10min < seconds <= 30min -> 点亮 30min
-        // 0 < seconds <= 10min -> 点亮 10min
-        if (seconds == 0)
-        {
-            // 全灭，已默认设置
-        }
-        else if (seconds > sec_30)
-        {
-            // 大于30分钟（包括大于60分钟）点亮 60 分钟灯
-            led_hw_set(LED_60MIN, true);
-            led_controls[LED_60MIN].mode = LED_MODE_ON;
-        }
-        else if (seconds > sec_10)
-        {
-            // 大于10分钟且不超过30分钟 -> 点亮 30 分钟灯
-            led_hw_set(LED_30MIN, true);
-            led_controls[LED_30MIN].mode = LED_MODE_ON;
-        }
-        else
-        {
-            // 小于或等于10分钟且大于0 -> 点亮 10 分钟灯
-            led_hw_set(LED_10MIN, true);
-            led_controls[LED_10MIN].mode = LED_MODE_ON;
+        if (seconds == 0) {
+            // 全灭（已默认设置）
+        } else if (seconds > SEC_30) {
+            led_set_mode_internal(LED_60MIN, LED_MODE_ON, 0);
+        } else if (seconds > SEC_10) {
+            led_set_mode_internal(LED_30MIN, LED_MODE_ON, 0);
+        } else {
+            led_set_mode_internal(LED_10MIN, LED_MODE_ON, 0);
         }
 
         xSemaphoreGive(led_mutex);

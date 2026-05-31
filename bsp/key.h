@@ -1,6 +1,6 @@
 
-#ifndef KEY_H
-#define KEY_H
+#ifndef __KEY_H
+#define __KEY_H
 
 #ifdef __cplusplus
 extern "C"
@@ -31,6 +31,7 @@ typedef enum
     KEY_SHORTCUT_2 = 13,
     KEY_MIN30 = 14,
     KEY_HEAT = 15,
+    // 16, 17 保留
     KEY_POWER = 18
 } KeyMode;
 /*----------------------------------variable----------------------------------*/
@@ -45,4 +46,4 @@ unsigned char get_key(void);
 }
 #endif
 
-#endif /* KEY_H */
+#endif /* __KEY_H */

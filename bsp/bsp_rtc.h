@@ -25,7 +25,7 @@ HAL_StatusTypeDef RTC_SetUTC(uint32_t utc);
 void              RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime);
 uint32_t          RTC_DateTimeToUTC(RTC_DateTimeTypeDef *datetime);
 
-// 外部RTC句柄声明
-// extern RTC_HandleTypeDef hrtc;
+// 外部RTC句柄
+extern RTC_HandleTypeDef hrtc;
 
-#endif /* __RTC_H */
+#endif /* __BSP_RTC_H */
