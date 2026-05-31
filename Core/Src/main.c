@@ -101,7 +101,7 @@ int main(void)
     // MX_TIM3_Init();
     MX_ADC1_Init();
     /* USER CODE BEGIN 2 */
-    RTC_Init();
+    rtc_init();
     /* USER CODE END 2 */
 
     /* Init scheduler */

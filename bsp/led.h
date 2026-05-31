@@ -1,70 +1,27 @@
 #ifndef __LED_H
 #define __LED_H
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 #include "gpio.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-/**
- * @brief LED索引枚举，定义所有可用LED
- */
-typedef enum
-{
-    LED_MUSIC, // 音乐指示灯
-    LED_BT,    // 蓝牙指示灯
-    LED_10MIN, // 10分钟指示灯
-    LED_30MIN, // 30分钟指示灯
-    LED_60MIN, // 60分钟指示灯
-    LED_RF,    // 射频指示灯
-    LED_B,     // 蓝色LED
-    LED_COUNT  // LED总数，用于边界检查
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {
+    LED_MUSIC, LED_BT, LED_10MIN, LED_30MIN, LED_60MIN, LED_RF, LED_B, LED_COUNT
 } LED_Index;
 
-/**
- * @brief LED工作模式枚举
- */
-typedef enum
-{
-    LED_MODE_OFF,  // 关闭模式
-    LED_MODE_ON,   // 常亮模式
-    LED_MODE_BLINK // 闪烁模式
-} led_mode_t;
+typedef enum { LED_MODE_OFF, LED_MODE_ON, LED_MODE_BLINK } led_mode_t;
 
-/**
- * @brief 初始化所有LED控制器
- * @note 需在系统启动时调用（FreeRTOS初始化之后）
- */
 void led_init(void);
-
-/**
- * @brief 设置指定LED的工作模式（线程安全）
- * @param idx LED索引（LED_Index）
- * @param mode 工作模式（LED_MODE_OFF/ON/BLINK）
- * @param interval_ms 闪烁间隔（毫秒），仅BLINK模式有效
- *                    若为0则使用默认值500ms
- */
 void led_set_mode(LED_Index idx, led_mode_t mode, uint32_t interval_ms);
-
-/**
- * @brief 读取指定LED的当前状态
- * @param idx LED索引
- * @return true: 点亮状态，false: 熄灭状态
- */
 bool led_get(LED_Index idx);
-
-/**
- * @brief 时间指示灯控制：10/30/60分钟互斥显示
- * @param seconds 秒数，可选：0（全灭）、1~600（10min）、601~1800（30min）、>1800（60min）
- */
 void led_time_select(uint16_t seconds);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __LED_H */
+#endif

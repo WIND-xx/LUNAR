@@ -1,22 +1,9 @@
-#ifndef HEAT_TASK_H
-#define HEAT_TASK_H
+#ifndef HEAT_SERVICE_H
+#define HEAT_SERVICE_H
 
 #include <stdbool.h>
 #include <stdint.h>
-
-/**
- * @brief 加热任务配置宏
- */
-#define HEAT_TASK_NAME               "heat_task"      // 任务名
-#define HEAT_TASK_STACK_SIZE         512              // 任务栈大小
-#define HEAT_TASK_PRIORITY           3                // 任务优先级
-#define HEAT_CTRL_QUEUE_LEN          5                // 控制队列长度
-#define HEAT_MUTEX_LOCK_TIMEOUT_MS   50               // 互斥锁超时时间(ms)
-#define HEAT_CONTROL_PERIOD_MS       500              // 加热控制周期(ms)
-
-#define HEAT_MAX_TIMER_MINUTE        720              // 最大定时时间(分钟)
-#define HEAT_NTC_FAIL_THRESHOLD      3                // NTC读取失败阈值
-#define HEAT_BUZZER_BEEP_COUNT       5                // 档位到极值时蜂鸣次数
+#include "../core/app_config.h"
 
 /**
  * @brief 加热状态枚举
@@ -47,11 +34,11 @@ typedef struct
     float target_temp;          ///< 对应目标温度(℃)
 } HeatLevelTempMap;
 
-/**
- * @brief 初始化加热任务及相关资源
- * @retval true - 初始化成功, false - 初始化失败
- */
+/* 状态上传回调（上层注册，解耦协议层） */
+typedef void (*heat_upload_cb_t)(void);
+
 bool heat_task_init(void);
+void heat_service_set_upload_handler(heat_upload_cb_t cb);
 
 /**
  * @brief 反初始化加热任务（释放资源）

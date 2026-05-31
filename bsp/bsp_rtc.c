@@ -1,10 +1,10 @@
 #include "bsp_rtc.h"
 #include <stdbool.h>
 
-/* 2000-01-01 00:00:00 对应的 Unix UTC 时间戳 */
+/* 2000-01-01 00:00:00 对应�?Unix UTC 时间�?*/
 #define UNIX_EPOCH_OFFSET 946684800U
 
-/* RTC备份寄存器 */
+/* RTC备份寄存�?*/
 #define BKP_INIT_REG   RTC_BKP_DR1
 #define BKP_INIT_MAGIC 0x1234
 
@@ -20,8 +20,8 @@ static void     rtc_set_counter(uint32_t counter);
 /* 每月天数表（非闰年） */
 static const uint8_t days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
-// 初始化RTC(使用HAL库的备份寄存器函数)
-HAL_StatusTypeDef RTC_Init(void)
+// 初始化RTC(使用HAL库的备份寄存器函�?
+HAL_StatusTypeDef rtc_init(void)
 {
     // 初始化RTC句柄
     hrtc.Instance = RTC;
@@ -30,13 +30,13 @@ HAL_StatusTypeDef RTC_Init(void)
     __HAL_RCC_PWR_CLK_ENABLE();
     __HAL_RCC_BKP_CLK_ENABLE();
 
-    // 允许访问备份域(使用HAL库函数)
+    // 允许访问备份�?使用HAL库函�?
     HAL_PWR_EnableBkUpAccess();
 
-    // 检查RTC是否已经初始化(使用HAL的备份寄存器函数)
+    // 检查RTC是否已经初始�?使用HAL的备份寄存器函数)
     if (HAL_RTCEx_BKUPRead(&hrtc, BKP_INIT_REG) != BKP_INIT_MAGIC)
     {
-        // 配置LSE作为RTC时钟源
+        // 配置LSE作为RTC时钟�?
         __HAL_RCC_LSE_CONFIG(RCC_LSE_ON);
 
         // 等待LSE稳定
@@ -70,7 +70,7 @@ HAL_StatusTypeDef RTC_Init(void)
         // 使能RTC时钟
         SET_BIT(RCC->BDCR, RCC_BDCR_RTCEN);
 
-        // 等待RTC寄存器同步
+        // 等待RTC寄存器同�?
         CLEAR_BIT(RTC->CRL, RTC_CRL_RSF);
         while ((RTC->CRL & RTC_CRL_RSF) == 0)
             ;
@@ -81,7 +81,7 @@ HAL_StatusTypeDef RTC_Init(void)
         // 设置预分频器
         if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY))
         {
-            // LSE为32768Hz，设置预分频得到1Hz
+            // LSE�?2768Hz，设置预分频得到1Hz
             RTC->PRLH = 0x0000;
             RTC->PRLL = 0x7FFF; // 32767
         }
@@ -92,7 +92,7 @@ HAL_StatusTypeDef RTC_Init(void)
             RTC->PRLL = 0x9C3F; // 39999
         }
 
-        // 退出配置模式
+        // 退出配置模�?
         CLEAR_BIT(RTC->CRL, RTC_CRL_CNF);
 
         // 等待操作完成
@@ -113,12 +113,12 @@ HAL_StatusTypeDef RTC_Init(void)
     return HAL_OK;
 }
 
-// 设置RTC日期时间(完全自定义实现)
-HAL_StatusTypeDef RTC_SetDateTime(RTC_DateTimeTypeDef *datetime)
+// 设置RTC日期时间(完全自定义实�?
+HAL_StatusTypeDef rtc_set_datetime(rtc_datetime_t *datetime)
 {
     if (datetime == NULL) return HAL_ERROR;
 
-    // 检查日期时间有效性
+    // 检查日期时间有效�?
     if (datetime->year > 99 || datetime->month < 1 || datetime->month > 12 || datetime->day < 1 ||
         datetime->day > get_days_in_month(datetime->month, 2000 + datetime->year) || datetime->hour > 23 ||
         datetime->minute > 59 || datetime->second > 59)
@@ -127,24 +127,24 @@ HAL_StatusTypeDef RTC_SetDateTime(RTC_DateTimeTypeDef *datetime)
     }
 
     // 转换为UTC时间戳并设置
-    uint32_t utc = RTC_DateTimeToUTC(datetime);
-    return RTC_SetUTC(utc);
+    uint32_t utc = rtc_datetime_to_utc(datetime);
+    return rtc_set_utc(utc);
 }
 
-// 获取当前日期时间(完全自定义实现)
-HAL_StatusTypeDef RTC_GetDateTime(RTC_DateTimeTypeDef *datetime)
+// 获取当前日期时间(完全自定义实�?
+HAL_StatusTypeDef rtc_get_datetime(rtc_datetime_t *datetime)
 {
     if (datetime == NULL) return HAL_ERROR;
 
-    // 获取当前UTC时间戳并转换为日期时间
-    uint32_t utc = RTC_GetUTC();
-    RTC_UTCToDateTime(utc, datetime);
+    // 获取当前UTC时间戳并转换为日期时�?
+    uint32_t utc = rtc_get_utc();
+    rtc_utc_to_datetime(utc, datetime);
 
     return HAL_OK;
 }
 
-// 获取当前UTC时间戳
-uint32_t RTC_GetUTC(void)
+// 获取当前UTC时间�?
+uint32_t rtc_get_utc(void)
 {
     uint32_t counter1, counter2;
 
@@ -158,10 +158,10 @@ uint32_t RTC_GetUTC(void)
     return counter1 + UNIX_EPOCH_OFFSET;
 }
 
-// 设置UTC时间戳
-HAL_StatusTypeDef RTC_SetUTC(uint32_t utc)
+// 设置UTC时间�?
+HAL_StatusTypeDef rtc_set_utc(uint32_t utc)
 {
-    // 转换为2000年为基准的计数器值
+    // 转换�?000年为基准的计数器�?
     uint32_t counter = utc - UNIX_EPOCH_OFFSET;
 
     // 进入配置模式
@@ -171,10 +171,10 @@ HAL_StatusTypeDef RTC_SetUTC(uint32_t utc)
     while ((RTC->CRL & RTC_CRL_CNF) == 0)
         ;
 
-    // 设置计数器值
+    // 设置计数器�?
     rtc_set_counter(counter);
 
-    // 退出配置模式
+    // 退出配置模�?
     CLEAR_BIT(RTC->CRL, RTC_CRL_CNF);
 
     // 等待操作完成
@@ -184,8 +184,8 @@ HAL_StatusTypeDef RTC_SetUTC(uint32_t utc)
     return HAL_OK;
 }
 
-// 从UTC时间戳转换为日期时间(完全自定义算法)
-void RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime)
+// 从UTC时间戳转换为日期时间(完全自定义算�?
+void rtc_utc_to_datetime(uint32_t utc, rtc_datetime_t *datetime)
 {
     if (datetime == NULL) return;
 
@@ -200,7 +200,7 @@ void RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime)
     datetime->hour = seconds % 24;
     uint32_t total_days = seconds / 24; // 保存总天数用于周计算
 
-    // 计算年份(2000年开始)
+    // 计算年份(2000年开�?
     uint32_t days = total_days;
     datetime->year = 0;
     while (1) {
@@ -211,7 +211,7 @@ void RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime)
         datetime->year++;
     }
 
-    // 计算月份和日期
+    // 计算月份和日�?
     datetime->month = 1;
     while (1) {
         uint16_t yr = 2000 + datetime->year;
@@ -223,34 +223,34 @@ void RTC_UTCToDateTime(uint32_t utc, RTC_DateTimeTypeDef *datetime)
 
     datetime->day = days + 1;
 
-    // 计算星期几：2000-01-01是星期六(6)，(total_days + 6) % 7 → 0=星期日
+    // 计算星期几：2000-01-01是星期六(6)�?total_days + 6) % 7 �?0=星期�?
     datetime->weekday = (total_days + 6) % 7;
 }
 
-// 从日期时间转换为UTC时间戳(完全自定义算法)
-uint32_t RTC_DateTimeToUTC(RTC_DateTimeTypeDef *datetime)
+// 从日期时间转换为UTC时间�?完全自定义算�?
+uint32_t rtc_datetime_to_utc(rtc_datetime_t *datetime)
 {
     if (datetime == NULL) return 0;
 
     uint32_t seconds = 0;
 
-    // 计算从2000年到指定年份的总天数
+    // 计算�?000年到指定年份的总天�?
     for (uint8_t y = 0; y < datetime->year; y++)
     {
         seconds += is_leap_year(2000 + y) ? 366 : 365;
     }
 
-    // 计算从年初到指定月份的总天数
+    // 计算从年初到指定月份的总天�?
     for (uint8_t m = 1; m < datetime->month; m++)
     {
         seconds += get_days_in_month(m, 2000 + datetime->year);
     }
 
-    // 加上日期、小时、分钟和秒
+    // 加上日期、小时、分钟和�?
     seconds += (datetime->day - 1);
     seconds = seconds * 86400 + datetime->hour * 3600 + datetime->minute * 60 + datetime->second;
 
-    // 加上2000年到1970年的秒数差
+    // 加上2000年到1970年的秒数�?
     return seconds + UNIX_EPOCH_OFFSET;
 }
 
@@ -267,19 +267,19 @@ static uint8_t get_days_in_month(uint8_t month, uint16_t year)
 
     uint8_t days = days_in_month[month - 1];
 
-    // 处理闰年的2月
+    // 处理闰年�?�?
     if (month == 2 && is_leap_year(year)) days++;
 
     return days;
 }
 
-// 内部函数：读取RTC计数器值
+// 内部函数：读取RTC计数器�?
 static uint32_t rtc_get_counter(void)
 {
     return (RTC->CNTH << 16) | RTC->CNTL;
 }
 
-// 内部函数：设置RTC计数器值
+// 内部函数：设置RTC计数器�?
 static void rtc_set_counter(uint32_t counter)
 {
     RTC->CNTH = (counter >> 16) & 0xFFFF;

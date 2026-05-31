@@ -57,23 +57,29 @@ set(PROJECT_SOURCES
     bsp/ntc.c
     
     # Tools sources
-    tools/at_ctrl.c
     tools/crc16.c
     tools/pid.c
     tools/pwm_driver.c
-    # tools/ring_buffer.c
     
-    # App sources
-    app/frame_process.c
-    app/at_process.c
-    app/heat_task.c
-    app/key_task.c
-    app/protocol.c
-    app/task_init.c
-    # app/at_command_manager.c
+    # Core sources
+    app/core/event_bus.c
+    
+    # Service sources
+    app/service/key_service.c
+    app/service/heat_service.c
+    app/service/ble_service.c
+    
+    # Protocol sources
+    app/protocol/modbus_slave.c
+    app/protocol/at_parser.c
+    app/protocol/at_command_manager.c
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
+
+# Add app_main separately
+set(APP_MAIN app/app_main.c)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${APP_MAIN})
 
 
 # Add include paths
@@ -81,6 +87,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     bsp
     app
+    app/core
+    app/service
+    app/protocol
     tools
 )
 

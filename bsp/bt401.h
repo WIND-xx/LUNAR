@@ -29,5 +29,6 @@ void    bt401_init(void);
 uint8_t bt401_sendbytes(uint8_t *buf, uint16_t len);
 int     bt401_printf(const char *format, ...);
 uint8_t bt401_get_frame(frame_t *frame, TickType_t timeout);
+uint32_t bt401_get_overrun_count(void);  // DMA溢出计数
 
 #endif // BT401_H

@@ -1,9 +1,9 @@
 /**
- * @file protocol.c
+ * @file modbus_slave.c
  * @brief Modbus协议优化实现
  * @version 2.0
  */
-#include "protocol.h"
+#include "modbus_slave.h"
 #include "FreeRTOS.h"
 #include "bsp_rtc.h"
 #include "bt401.h"
@@ -141,7 +141,7 @@ static bool process_utc_timestamp(uint16_t start_reg, uint16_t reg_num, const ui
         g_registers[REG_UTC_TIMESTAMP_LOW] = low_val;
 
         // 设置RTC
-        if (RTC_SetUTC(utc_full) == 0) {
+        if (rtc_set_utc(utc_full) == 0) {
             return true;
         }
     }
@@ -488,17 +488,21 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
 
     // 如果是错误，构建异常响应
     if (result != PROTOCOL_SUCCESS) {
-        uint8_t exception_code = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
+        uint8_t exception_code;
 
         switch (result) {
         case PROTOCOL_ERR_INVALID_ADDR:
         case PROTOCOL_ERR_INVALID_REG:
+        case PROTOCOL_ERR_WRITE_ONLY:     // 读取了只写寄存器
+        case PROTOCOL_ERR_READ_ONLY:      // 写入了只读寄存器
             exception_code = MODBUS_EXCEPTION_ILLEGAL_ADDRESS;
             break;
         case PROTOCOL_ERR_INVALID_VALUE:
             exception_code = MODBUS_EXCEPTION_ILLEGAL_VALUE;
             break;
+        case PROTOCOL_ERR_INVALID_FUNC:
         default:
+            exception_code = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
             break;
         }
 
@@ -509,23 +513,23 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
 }
 
 /**
- * @brief 兼容原接口
+ * @brief 处理Modbus请求帧并发送响应（包含异常响应）
  */
 bool protocol_handle_request(const uint8_t* data, size_t len)
 {
-    uint8_t response[RESPONSE_BUF_SIZE];
+    uint8_t  response[RESPONSE_BUF_SIZE];
     uint16_t resp_len = 0;
 
     ProtocolResult result = protocol_process_frame(data, (uint16_t)len, response, &resp_len);
 
-    if (result == PROTOCOL_SUCCESS && resp_len > 0) {
-        // 计算CRC并发送
+    /* 有响应数据（成功或异常）才发送 */
+    if (resp_len > 0) {
         uint16_t crc = protocol_calc_crc16(response, resp_len);
-        response[resp_len] = (uint8_t)(crc & 0xFF);
+        response[resp_len]     = (uint8_t)(crc & 0xFF);
         response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
         bt401_sendbytes(response, resp_len + 2);
-        return true;
+        return (result == PROTOCOL_SUCCESS);
     }
 
     return false;

@@ -11,6 +11,7 @@
 #include "main.h"
 #include "stm32f1xx_hal_adc.h"
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 // ========== 配置区域 ==========
@@ -26,6 +27,11 @@
 // DMA模式开关
 #ifndef NTC_USE_DMA
 #define NTC_USE_DMA 1 // 默认启用DMA
+#endif
+
+// 传感器故障检测阈值
+#ifndef NTC_STUCK_THRESHOLD
+#define NTC_STUCK_THRESHOLD 10
 #endif
 
 // DMA双缓冲区开关
@@ -66,6 +72,11 @@ static uint8_t moving_idx = 0;                  // 滑动平均索引
 static float last_filtered_temp = 25.0f;        // 上次滤波温度
 static uint8_t is_first = 1;                    // 首次运行标志
 static float g_temp_offset = 0.0f;              // 温度补偿偏移量
+
+// 传感器故障检测
+static uint32_t ntc_last_raw_adc = 0;           // 上一次ADC原始值
+static uint8_t  ntc_stuck_counter = 0;          // 卡死计数器
+static bool     ntc_fault_active = false;       // 故障标志
 
 #if NTC_USE_DMA
 // DMA相关变量
@@ -420,6 +431,59 @@ void ntc_init(void)
     last_filtered_temp = 25.0f;
     is_first = 1;
     moving_idx = 0;
+    ntc_stuck_counter = 0;
+    ntc_fault_active = false;
+}
+
+/**
+ * @brief 检测NTC传感器故障（卡死/开路/短路）
+ * @param adc_raw_val 当前ADC原始中值
+ * @retval true: 传感器故障, false: 正常
+ */
+static bool ntc_detect_fault(uint32_t adc_raw_val)
+{
+    /* 开路检测：ADC接近最大值 */
+    if (adc_raw_val >= ADC_MAX_VALUE - 10) {
+        ntc_fault_active = true;
+        return true;
+    }
+
+    /* 短路检测：ADC接近0 */
+    if (adc_raw_val <= 10) {
+        ntc_fault_active = true;
+        return true;
+    }
+
+    /* 卡死检测：连续多次读数不变 */
+    if (adc_raw_val == ntc_last_raw_adc) {
+        if (++ntc_stuck_counter >= NTC_STUCK_THRESHOLD) {
+            ntc_fault_active = true;
+            return true;
+        }
+    } else {
+        ntc_stuck_counter = 0;
+        ntc_last_raw_adc = adc_raw_val;
+    }
+
+    ntc_fault_active = false;
+    return false;
+}
+
+/**
+ * @brief 获取NTC故障状态
+ */
+bool ntc_is_fault(void)
+{
+    return ntc_fault_active;
+}
+
+/**
+ * @brief 清除NTC故障状态
+ */
+void ntc_clear_fault(void)
+{
+    ntc_fault_active = false;
+    ntc_stuck_counter = 0;
 }
 
 int ntc_read(float* temperature)
@@ -446,6 +510,12 @@ int ntc_read(float* temperature)
     // ADC值合理性检查
     if (adc_val > ADC_MAX_VALUE) {
         adc_val = ADC_MAX_VALUE;
+    }
+
+    // 传感器故障检测
+    if (ntc_detect_fault(adc_val)) {
+        *temperature = last_filtered_temp;
+        return -4; // 传感器故障
     }
 
     // 查表计算温度
