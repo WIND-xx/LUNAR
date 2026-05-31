@@ -25,9 +25,9 @@ static void my_register_write_callback(RegisterID reg, uint16_t value)
     case REG_HEATING_STATUS:
         // 控制加热开关
         if (value == 0) {
-            heat_status_set(HEAT_STOP);
+            heat_status_set(HEAT_STATUS_STOP);
         } else {
-            heat_status_set(HEAT_RUNNING);
+            heat_status_set(HEAT_STATUS_RUNNING);
         }
         break;
 

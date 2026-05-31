@@ -28,18 +28,24 @@ HAL_StatusTypeDef pwm_driver_init(pwm_driver_t* self, TIM_HandleTypeDef* htim, u
                                   const pwm_config_t* config);
 
 // 设置占空比（整数，范围 [0, resolution)）
-void pwm_driver_set_duty(pwm_driver_t* self, uint32_t duty);
+HAL_StatusTypeDef pwm_driver_set_duty(pwm_driver_t* self, uint32_t duty);
 
 // 启动 PWM 输出
-static inline void pwm_driver_start(pwm_driver_t* self)
+static inline HAL_StatusTypeDef pwm_driver_start(pwm_driver_t* self)
 {
-    if (self) HAL_TIM_PWM_Start(self->htim, self->channel);
+    if (!self || !self->htim) {
+        return HAL_ERROR;
+    }
+    return HAL_TIM_PWM_Start(self->htim, self->channel);
 }
 
 // 停止 PWM 输出
-static inline void pwm_driver_stop(pwm_driver_t* self)
+static inline HAL_StatusTypeDef pwm_driver_stop(pwm_driver_t* self)
 {
-    if (self) HAL_TIM_PWM_Stop(self->htim, self->channel);
+    if (!self || !self->htim) {
+        return HAL_ERROR;
+    }
+    return HAL_TIM_PWM_Stop(self->htim, self->channel);
 }
 
 #ifdef __cplusplus
