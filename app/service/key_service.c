@@ -5,8 +5,8 @@
  */
 
 #include "key_service.h"
-#include "core/app_config.h"
-#include "core/event_bus.h"
+#include "app_config.h"
+#include "event_bus.h"
 #include "FreeRTOS.h"
 #include "key.h"
 #include "task.h"

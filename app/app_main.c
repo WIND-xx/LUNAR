@@ -8,8 +8,8 @@
 #include "task.h"
 
 #include "buzzer.h"
-#include "core/app_config.h"
-#include "core/event_bus.h"
+#include "app_config.h"
+#include "event_bus.h"
 #include "led.h"
 #include "key.h"
 
@@ -19,8 +19,8 @@
 #include "service/key_service.h"
 
 /* 协议层接口 */
-#include "protocol/at_parser.h"
-#include "protocol/modbus_slave.h"
+#include "at_parser.h"
+#include "modbus_slave.h"
 
 /*============================================================================
  * BLE帧 → 协议层分发

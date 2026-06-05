@@ -55,24 +55,26 @@ set(PROJECT_SOURCES
     bsp/key.c
     bsp/led.c
     bsp/ntc.c
+    bsp/pwm_driver.c
     
-    # Tools sources
-    tools/crc16.c
-    tools/pid.c
-    tools/pwm_driver.c
+    # Components - PID
+    components/pid/pid.c
     
-    # Core sources
-    app/core/event_bus.c
+    # Components - CRC16
+    components/crc16/crc16.c
+    
+    # Components - Event Bus
+    components/event_bus/event_bus.c
+    
+    # Components - Protocol
+    components/protocol/modbus_slave.c
+    components/protocol/at_parser.c
+    components/protocol/at_command_manager.c
     
     # Service sources
     app/service/key_service.c
     app/service/heat_service.c
     app/service/ble_service.c
-    
-    # Protocol sources
-    app/protocol/modbus_slave.c
-    app/protocol/at_parser.c
-    app/protocol/at_command_manager.c
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
@@ -87,10 +89,11 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     bsp
     app
-    app/core
     app/service
-    app/protocol
-    tools
+    components/pid
+    components/crc16
+    components/event_bus
+    components/protocol
 )
 
 # Add project symbols (macros)
