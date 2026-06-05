@@ -28,6 +28,7 @@ bool heat_init(void)
     s_heat_dev.pwm.channel = TIM_CHANNEL_4;
     s_heat_dev.pwm.resolution = (uint32_t)htim1.Init.Period + 1;  // 100（因为 Period=99）
 
+    s_heat_dev.is_initialized = true;
     return true;
 }
 

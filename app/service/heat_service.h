@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "../core/app_config.h"
+#include "app_config.h"
 
 /**
  * @brief 加热状态枚举

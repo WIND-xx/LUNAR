@@ -5,10 +5,10 @@
  */
 
 #include "heat_service.h"
-#include "../core/app_config.h"
+#include "app_config.h"
 #include "bt401.h"
 #include "buzzer.h"
-#include "core/event_bus.h"
+#include "event_bus.h"
 #include "heat.h"
 #include "led.h"
 #include "ntc.h"

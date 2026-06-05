@@ -28,7 +28,7 @@ def _c(text: str, color: str) -> str:
 
 # ---- 配置 ----
 SCRIPT_DIR = Path(__file__).resolve().parent
-TARGET_DIRS = ["app", "bsp"]
+TARGET_DIRS = ["app", "bsp", "components"]
 EXTENSIONS  = ["*.c", "*.h"]
 CONFIG_FILE = ".clang-format"
 

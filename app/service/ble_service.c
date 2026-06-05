@@ -7,7 +7,7 @@
 #include "ble_service.h"
 #include "FreeRTOS.h"
 #include "bt401.h"
-#include "core/app_config.h"
+#include "app_config.h"
 #include "led.h"
 #include "task.h"
 #include <string.h>
