@@ -8,6 +8,7 @@
 #include "bsp_rtc.h"
 #include "bt401.h"
 #include "crc16.h"
+#include "semphr.h"
 #include "task.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -43,6 +44,7 @@ const RegisterDescriptor g_register_table[REG_COUNT] = {
 static uint16_t g_registers[REG_COUNT] = {0};
 static RegisterWriteCallback g_write_callback = NULL;
 static RegisterReadCallback g_read_callback = NULL;
+static SemaphoreHandle_t g_reg_mutex = NULL;  // 寄存器互斥锁
 
 /* 内部函数声明 */
 static bool is_valid_register(RegisterID reg);
@@ -62,10 +64,23 @@ static bool process_utc_timestamp(uint16_t start_reg, uint16_t reg_num, const ui
 static ProtocolResult internal_register_write(RegisterID reg, uint16_t value);
 
 /**
- * @brief 寄存器访问保护宏
+ * @brief 寄存器互斥锁保护宏
+ * @note  使用 FreeRTOS 互斥锁替代关中断，避免长时间阻塞系统中断和调度
+ *        回调函数在持锁期间执行，调用者需确保回调不会长时间阻塞
  */
-#define REGISTER_ENTER_CRITICAL() taskENTER_CRITICAL()
-#define REGISTER_EXIT_CRITICAL() taskEXIT_CRITICAL()
+#define REG_LOCK()   (xSemaphoreTake(g_reg_mutex, pdMS_TO_TICKS(100)))
+#define REG_UNLOCK() (xSemaphoreGive(g_reg_mutex))
+
+/**
+ * @brief 初始化协议模块（创建互斥锁，需在使用前调用一次）
+ */
+void protocol_init(void)
+{
+    if (g_reg_mutex == NULL) {
+        g_reg_mutex = xSemaphoreCreateMutex();
+        configASSERT(g_reg_mutex != NULL);
+    }
+}
 
 /**
  * @brief 检查寄存器ID是否有效
@@ -165,14 +180,16 @@ static ProtocolResult internal_register_write(RegisterID reg, uint16_t value)
         return PROTOCOL_ERR_INVALID_VALUE;
     }
 
-    REGISTER_ENTER_CRITICAL();
+    if (REG_LOCK() != pdTRUE) {
+        return PROTOCOL_ERR_BUSY;
+    }
 
     // 特殊寄存器处理
     switch (reg) {
         case REG_UTC_TIMESTAMP_HIGH:
         case REG_UTC_TIMESTAMP_LOW:
             // UTC时间戳需要高位和低位一起处理，不能单独写入
-            REGISTER_EXIT_CRITICAL();
+            REG_UNLOCK();
             return PROTOCOL_ERR_INVALID_VALUE;
 
         default:
@@ -185,7 +202,7 @@ static ProtocolResult internal_register_write(RegisterID reg, uint16_t value)
             break;
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
     return PROTOCOL_SUCCESS;
 }
 
@@ -216,7 +233,9 @@ static ProtocolResult handle_read_registers(uint8_t slave_addr, uint16_t start, 
 
     data_buf[data_len++] = (uint8_t)(count * 2);  // 字节数
 
-    REGISTER_ENTER_CRITICAL();
+    if (REG_LOCK() != pdTRUE) {
+        return PROTOCOL_ERR_BUSY;
+    }
 
     for (uint16_t i = 0; i < count; i++) {
         RegisterID reg = start + i;
@@ -233,7 +252,7 @@ static ProtocolResult handle_read_registers(uint8_t slave_addr, uint16_t start, 
         data_buf[data_len++] = (uint8_t)(value & 0xFF);
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
 
     build_success_response(slave_addr, MODBUS_FUNC_READ_HOLDING, data_buf, data_len, response, resp_len);
     return PROTOCOL_SUCCESS;
@@ -280,13 +299,15 @@ static ProtocolResult handle_write_registers(uint8_t slave_addr, uint16_t start,
         }
     }
 
-    // ---- 阶段2: 原子写入所有寄存器（临界区内） ----
-    REGISTER_ENTER_CRITICAL();
+    // ---- 阶段2: 原子写入所有寄存器（互斥锁保护） ----
+    if (REG_LOCK() != pdTRUE) {
+        return PROTOCOL_ERR_BUSY;
+    }
 
     // 处理特殊寄存器组合（如UTC时间戳）
     if (start <= REG_UTC_TIMESTAMP_LOW && (start + count) > REG_UTC_TIMESTAMP_HIGH) {
         if (!process_utc_timestamp(start, count, data)) {
-            REGISTER_EXIT_CRITICAL();
+            REG_UNLOCK();
             return PROTOCOL_ERR_INVALID_VALUE;
         }
     }
@@ -307,7 +328,7 @@ static ProtocolResult handle_write_registers(uint8_t slave_addr, uint16_t start,
         g_registers[reg] = value;
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
 
     // ---- 阶段3: 通知应用层（临界区外，避免长时间关调度） ----
     bytes_processed = 0;
@@ -566,7 +587,9 @@ ProtocolResult register_batch_write(RegisterID start_reg, const uint16_t* values
         }
     }
 
-    REGISTER_ENTER_CRITICAL();
+    if (REG_LOCK() != pdTRUE) {
+        return PROTOCOL_ERR_BUSY;
+    }
 
     for (uint8_t i = 0; i < count; i++) {
         RegisterID reg = (RegisterID)(start_reg + i);
@@ -577,7 +600,7 @@ ProtocolResult register_batch_write(RegisterID start_reg, const uint16_t* values
         }
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
     return PROTOCOL_SUCCESS;
 }
 
@@ -592,7 +615,9 @@ uint16_t register_read(RegisterID reg)
 
     uint16_t value;
 
-    REGISTER_ENTER_CRITICAL();
+    if (REG_LOCK() != pdTRUE) {
+        return 0xFFFF;
+    }
 
     if (g_read_callback != NULL) {
         value = g_read_callback(reg);
@@ -600,7 +625,7 @@ uint16_t register_read(RegisterID reg)
         value = g_registers[reg];
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
     return value;
 }
 
@@ -613,13 +638,15 @@ ProtocolResult register_batch_read(RegisterID start_reg, uint16_t* values, uint8
         return PROTOCOL_ERR_INVALID_REG;
     }
 
-    REGISTER_ENTER_CRITICAL();
+    if (REG_LOCK() != pdTRUE) {
+        return PROTOCOL_ERR_BUSY;
+    }
 
     for (uint8_t i = 0; i < count; i++) {
         RegisterID reg = (RegisterID)(start_reg + i);
 
         if (!check_register_access(reg, false)) {
-            REGISTER_EXIT_CRITICAL();
+            REG_UNLOCK();
             return PROTOCOL_ERR_READ_ONLY;
         }
 
@@ -630,7 +657,7 @@ ProtocolResult register_batch_read(RegisterID start_reg, uint16_t* values, uint8
         }
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
     return PROTOCOL_SUCCESS;
 }
 
@@ -662,7 +689,9 @@ void protocol_upload_heating_status(void)
     response[1] = MODBUS_FUNC_READ_HOLDING;
     response[2] = HEATING_REG_COUNT * 2;  // N个寄存器 × 2字节
 
-    REGISTER_ENTER_CRITICAL();
+    if (REG_LOCK() != pdTRUE) {
+        return;
+    }
 
     for (uint8_t i = 0; i < HEATING_REG_COUNT; i++) {
         RegisterID reg = REG_HEATING_STATUS + i;
@@ -678,7 +707,7 @@ void protocol_upload_heating_status(void)
         response[3 + (i * 2) + 1] = (uint8_t)(value & 0xFF);
     }
 
-    REGISTER_EXIT_CRITICAL();
+    REG_UNLOCK();
 
     uint16_t resp_len = 3 + (HEATING_REG_COUNT * 2);
 

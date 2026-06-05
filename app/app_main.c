@@ -170,6 +170,7 @@ void task_init(void)
     /* 注册层间回调（app_main 是唯一知道所有层的文件） */
     ble_service_set_frame_handler(on_ble_frame);
     heat_service_set_upload_handler(on_heat_upload);
+    protocol_init();  // 初始化协议模块（创建互斥锁）
     protocol_register_write_callback(on_reg_write);
     protocol_register_read_callback(on_reg_read);
 }

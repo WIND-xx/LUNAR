@@ -69,6 +69,7 @@ extern const RegisterDescriptor g_register_table[REG_COUNT];
 
 /*----------------------------------function----------------------------------*/
 // 基础协议接口
+void protocol_init(void);  // 初始化协议模块（创建互斥锁）
 ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t* response, uint16_t* resp_len);
 bool protocol_handle_request(const uint8_t* data, size_t len);
 void protocol_upload_heating_status(void);
