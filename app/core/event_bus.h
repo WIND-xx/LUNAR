@@ -19,24 +19,24 @@ extern "C" {
  *============================================================================*/
 typedef enum {
     /* 按键事件 */
-    EVENT_KEY_SHORT_PRESS,          // 参数: key_id
-    EVENT_KEY_LONG_PRESS,           // 参数: key_id
+    EVENT_KEY_SHORT_PRESS,  // 参数: key_id
+    EVENT_KEY_LONG_PRESS,   // 参数: key_id
 
     /* 加热事件 */
-    EVENT_HEAT_STATUS_CHANGE,       // 参数: 0=STOP, 1=RUNNING
-    EVENT_HEAT_LEVEL_CHANGE,        // 参数: level (0-2)
-    EVENT_HEAT_TIMER_CHANGE,        // 参数: minutes
-    EVENT_HEAT_TOGGLE,              // 参数: 无
-    EVENT_HEAT_STATUS_UPLOAD,       // 参数: 无 (触发协议上传)
+    EVENT_HEAT_STATUS_CHANGE,  // 参数: 0=STOP, 1=RUNNING
+    EVENT_HEAT_LEVEL_CHANGE,   // 参数: level (0-2)
+    EVENT_HEAT_TIMER_CHANGE,   // 参数: minutes
+    EVENT_HEAT_TOGGLE,         // 参数: 无
+    EVENT_HEAT_STATUS_UPLOAD,  // 参数: 无 (触发协议上传)
 
     /* BLE 事件 */
-    EVENT_BLE_MODE_CHANGE,          // 参数: bt_mode_t
+    EVENT_BLE_MODE_CHANGE,  // 参数: bt_mode_t
 
     /* 系统事件 */
-    EVENT_RTC_SYNC,                 // 参数: utc_timestamp
-    EVENT_NTC_FAULT,                // 参数: 无
-    EVENT_NTC_FAULT_CLEAR,          // 参数: 无
-    EVENT_POWER_OFF,                // 参数: 无
+    EVENT_RTC_SYNC,         // 参数: utc_timestamp
+    EVENT_NTC_FAULT,        // 参数: 无
+    EVENT_NTC_FAULT_CLEAR,  // 参数: 无
+    EVENT_POWER_OFF,        // 参数: 无
 
     EVENT_COUNT
 } EventType;

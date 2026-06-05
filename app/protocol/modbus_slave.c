@@ -25,9 +25,9 @@
 #define MIN_FRAME_LEN 4
 #define READ_FRAME_MIN_LEN 8
 #define WRITE_MULTI_MIN_LEN 9
-#define MAX_REGISTERS_PER_FRAME 125 // Modbus标准限制
+#define MAX_REGISTERS_PER_FRAME 125  // Modbus标准限制
 #define RESPONSE_BUF_SIZE 256
-#define HEATING_REG_COUNT  3       // 加热状态相关寄存器数量
+#define HEATING_REG_COUNT 3  // 加热状态相关寄存器数量
 
 /* 寄存器描述表 */
 const RegisterDescriptor g_register_table[REG_COUNT] = {
@@ -107,21 +107,21 @@ static bool validate_register_value(RegisterID reg, uint16_t value)
 
     // 特殊处理：某些寄存器有特殊验证规则
     switch (reg) {
-    case REG_DELETE_ALARM:
-    case REG_EXECUTE_SHORTCUT:
-        return (value == 1 || value == 2);
-    case REG_UTC_TIMESTAMP_HIGH:
-    case REG_UTC_TIMESTAMP_LOW:
-    case REG_ALARM_SET_HIGH:
-    case REG_ALARM_SET_LOW:
-        // 这些寄存器由组合逻辑验证
-        return true;
-    default:
-        // 通用范围验证
-        if (desc->min_val == 0 && desc->max_val == 0) {
-            return true; // 无范围限制
-        }
-        return (value >= desc->min_val && value <= desc->max_val);
+        case REG_DELETE_ALARM:
+        case REG_EXECUTE_SHORTCUT:
+            return (value == 1 || value == 2);
+        case REG_UTC_TIMESTAMP_HIGH:
+        case REG_UTC_TIMESTAMP_LOW:
+        case REG_ALARM_SET_HIGH:
+        case REG_ALARM_SET_LOW:
+            // 这些寄存器由组合逻辑验证
+            return true;
+        default:
+            // 通用范围验证
+            if (desc->min_val == 0 && desc->max_val == 0) {
+                return true;  // 无范围限制
+            }
+            return (value >= desc->min_val && value <= desc->max_val);
     }
 }
 
@@ -169,20 +169,20 @@ static ProtocolResult internal_register_write(RegisterID reg, uint16_t value)
 
     // 特殊寄存器处理
     switch (reg) {
-    case REG_UTC_TIMESTAMP_HIGH:
-    case REG_UTC_TIMESTAMP_LOW:
-        // UTC时间戳需要高位和低位一起处理，不能单独写入
-        REGISTER_EXIT_CRITICAL();
-        return PROTOCOL_ERR_INVALID_VALUE;
+        case REG_UTC_TIMESTAMP_HIGH:
+        case REG_UTC_TIMESTAMP_LOW:
+            // UTC时间戳需要高位和低位一起处理，不能单独写入
+            REGISTER_EXIT_CRITICAL();
+            return PROTOCOL_ERR_INVALID_VALUE;
 
-    default:
-        g_registers[reg] = value;
+        default:
+            g_registers[reg] = value;
 
-        // 调用写回调通知应用层
-        if (g_write_callback != NULL) {
-            g_write_callback(reg, value);
-        }
-        break;
+            // 调用写回调通知应用层
+            if (g_write_callback != NULL) {
+                g_write_callback(reg, value);
+            }
+            break;
     }
 
     REGISTER_EXIT_CRITICAL();
@@ -214,7 +214,7 @@ static ProtocolResult handle_read_registers(uint8_t slave_addr, uint16_t start, 
     uint8_t data_buf[RESPONSE_BUF_SIZE];
     uint16_t data_len = 0;
 
-    data_buf[data_len++] = (uint8_t)(count * 2); // 字节数
+    data_buf[data_len++] = (uint8_t)(count * 2);  // 字节数
 
     REGISTER_ENTER_CRITICAL();
 
@@ -361,7 +361,7 @@ static void build_exception_response(uint8_t slave_addr, uint8_t func_code, uint
                                      uint16_t* resp_len)
 {
     response[0] = slave_addr;
-    response[1] = func_code | 0x80; // 设置异常标志
+    response[1] = func_code | 0x80;  // 设置异常标志
     response[2] = exception_code;
     *resp_len = 3;
 }
@@ -401,7 +401,7 @@ bool protocol_validate_crc(const uint8_t* data, uint16_t len)
     }
 
     uint16_t crc_calc = protocol_calc_crc16(data, len - 2);
-    uint16_t crc_recv = (data[len - 1] << 8) | data[len - 2]; // 注意：Modbus CRC是小端序
+    uint16_t crc_recv = (data[len - 1] << 8) | data[len - 2];  // 注意：Modbus CRC是小端序
 
     return (crc_calc == crc_recv);
 }
@@ -434,56 +434,57 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
     ProtocolResult result = PROTOCOL_SUCCESS;
 
     switch (func_code) {
-    case MODBUS_FUNC_READ_HOLDING: {
-        if (len < READ_FRAME_MIN_LEN) {
-            result = PROTOCOL_ERR_INVALID_FRAME;
+        case MODBUS_FUNC_READ_HOLDING: {
+            if (len < READ_FRAME_MIN_LEN) {
+                result = PROTOCOL_ERR_INVALID_FRAME;
+                break;
+            }
+
+            uint16_t start_reg = (data[2] << 8) | data[3];
+            uint16_t reg_count = (data[4] << 8) | data[5];
+
+            result = handle_read_registers(slave_addr, start_reg, reg_count, response, resp_len);
             break;
         }
 
-        uint16_t start_reg = (data[2] << 8) | data[3];
-        uint16_t reg_count = (data[4] << 8) | data[5];
+        case MODBUS_FUNC_WRITE_MULTIPLE: {
+            if (len < WRITE_MULTI_MIN_LEN) {
+                result = PROTOCOL_ERR_INVALID_FRAME;
+                break;
+            }
 
-        result = handle_read_registers(slave_addr, start_reg, reg_count, response, resp_len);
-        break;
-    }
+            uint16_t start_reg = (data[2] << 8) | data[3];
+            uint16_t reg_count = (data[4] << 8) | data[5];
+            uint8_t byte_count = data[6];
 
-    case MODBUS_FUNC_WRITE_MULTIPLE: {
-        if (len < WRITE_MULTI_MIN_LEN) {
-            result = PROTOCOL_ERR_INVALID_FRAME;
+            if ((7 + byte_count) > len) {
+                result = PROTOCOL_ERR_INVALID_FRAME;
+                break;
+            }
+
+            const uint8_t* write_data = &data[7];
+
+            result =
+                handle_write_registers(slave_addr, start_reg, reg_count, write_data, byte_count, response, resp_len);
             break;
         }
 
-        uint16_t start_reg = (data[2] << 8) | data[3];
-        uint16_t reg_count = (data[4] << 8) | data[5];
-        uint8_t byte_count = data[6];
+        case MODBUS_FUNC_WRITE_SINGLE: {
+            if (len != 8) {  // 地址+功能码+寄存器地址+寄存器值+CRC(2字节)
+                result = PROTOCOL_ERR_INVALID_FRAME;
+                break;
+            }
 
-        if ((7 + byte_count) > len) {
-            result = PROTOCOL_ERR_INVALID_FRAME;
+            uint16_t reg_addr = (data[2] << 8) | data[3];
+            uint16_t reg_value = (data[4] << 8) | data[5];
+
+            result = handle_write_single_register(slave_addr, reg_addr, reg_value, response, resp_len);
             break;
         }
 
-        const uint8_t* write_data = &data[7];
-
-        result = handle_write_registers(slave_addr, start_reg, reg_count, write_data, byte_count, response, resp_len);
-        break;
-    }
-
-    case MODBUS_FUNC_WRITE_SINGLE: {
-        if (len != 8) { // 地址+功能码+寄存器地址+寄存器值+CRC(2字节)
-            result = PROTOCOL_ERR_INVALID_FRAME;
+        default:
+            result = PROTOCOL_ERR_INVALID_FUNC;
             break;
-        }
-
-        uint16_t reg_addr = (data[2] << 8) | data[3];
-        uint16_t reg_value = (data[4] << 8) | data[5];
-
-        result = handle_write_single_register(slave_addr, reg_addr, reg_value, response, resp_len);
-        break;
-    }
-
-    default:
-        result = PROTOCOL_ERR_INVALID_FUNC;
-        break;
     }
 
     // 如果是错误，构建异常响应
@@ -491,19 +492,19 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
         uint8_t exception_code;
 
         switch (result) {
-        case PROTOCOL_ERR_INVALID_ADDR:
-        case PROTOCOL_ERR_INVALID_REG:
-        case PROTOCOL_ERR_WRITE_ONLY:     // 读取了只写寄存器
-        case PROTOCOL_ERR_READ_ONLY:      // 写入了只读寄存器
-            exception_code = MODBUS_EXCEPTION_ILLEGAL_ADDRESS;
-            break;
-        case PROTOCOL_ERR_INVALID_VALUE:
-            exception_code = MODBUS_EXCEPTION_ILLEGAL_VALUE;
-            break;
-        case PROTOCOL_ERR_INVALID_FUNC:
-        default:
-            exception_code = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
-            break;
+            case PROTOCOL_ERR_INVALID_ADDR:
+            case PROTOCOL_ERR_INVALID_REG:
+            case PROTOCOL_ERR_WRITE_ONLY:  // 读取了只写寄存器
+            case PROTOCOL_ERR_READ_ONLY:   // 写入了只读寄存器
+                exception_code = MODBUS_EXCEPTION_ILLEGAL_ADDRESS;
+                break;
+            case PROTOCOL_ERR_INVALID_VALUE:
+                exception_code = MODBUS_EXCEPTION_ILLEGAL_VALUE;
+                break;
+            case PROTOCOL_ERR_INVALID_FUNC:
+            default:
+                exception_code = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
+                break;
         }
 
         build_exception_response(slave_addr, func_code, exception_code, response, resp_len);
@@ -517,7 +518,7 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
  */
 bool protocol_handle_request(const uint8_t* data, size_t len)
 {
-    uint8_t  response[RESPONSE_BUF_SIZE];
+    uint8_t response[RESPONSE_BUF_SIZE];
     uint16_t resp_len = 0;
 
     ProtocolResult result = protocol_process_frame(data, (uint16_t)len, response, &resp_len);
@@ -525,7 +526,7 @@ bool protocol_handle_request(const uint8_t* data, size_t len)
     /* 有响应数据（成功或异常）才发送 */
     if (resp_len > 0) {
         uint16_t crc = protocol_calc_crc16(response, resp_len);
-        response[resp_len]     = (uint8_t)(crc & 0xFF);
+        response[resp_len] = (uint8_t)(crc & 0xFF);
         response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
         bt401_sendbytes(response, resp_len + 2);
@@ -659,7 +660,7 @@ void protocol_upload_heating_status(void)
     // 构建响应头：地址 + 功能码 + 字节数
     response[0] = MODBUS_SLAVE_ADDR;
     response[1] = MODBUS_FUNC_READ_HOLDING;
-    response[2] = HEATING_REG_COUNT * 2; // N个寄存器 × 2字节
+    response[2] = HEATING_REG_COUNT * 2;  // N个寄存器 × 2字节
 
     REGISTER_ENTER_CRITICAL();
 
@@ -673,7 +674,7 @@ void protocol_upload_heating_status(void)
             value = g_registers[reg];
         }
 
-        response[3 + (i * 2)]     = (uint8_t)((value >> 8) & 0xFF);
+        response[3 + (i * 2)] = (uint8_t)((value >> 8) & 0xFF);
         response[3 + (i * 2) + 1] = (uint8_t)(value & 0xFF);
     }
 
@@ -683,7 +684,7 @@ void protocol_upload_heating_status(void)
 
     // 计算CRC并发送
     uint16_t crc = protocol_calc_crc16(response, resp_len);
-    response[resp_len]     = (uint8_t)(crc & 0xFF);
+    response[resp_len] = (uint8_t)(crc & 0xFF);
     response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
     bt401_sendbytes(response, resp_len + 2);

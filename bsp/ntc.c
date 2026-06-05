@@ -16,17 +16,17 @@
 
 // ========== 配置区域 ==========
 // 根据应用需求调整以下参数
-#define NTC_NUM 5               // 中值滤波样本数，建议奇数
-#define MOVING_AVG_LEN 8        // 滑动平均长度（2的幂次）
-#define LOW_PASS_ALPHA 0.3f     // 浮点低通系数
-#define ADC_MAX_VALUE 4095      // 12位ADC最大值
-#define TEMP_MIN_VALID (-20.0f) // 应用层有效范围
+#define NTC_NUM 5                // 中值滤波样本数，建议奇数
+#define MOVING_AVG_LEN 8         // 滑动平均长度（2的幂次）
+#define LOW_PASS_ALPHA 0.3f      // 浮点低通系数
+#define ADC_MAX_VALUE 4095       // 12位ADC最大值
+#define TEMP_MIN_VALID (-20.0f)  // 应用层有效范围
 #define TEMP_MAX_VALID 100.0f
-#define ADC_SAMPLE_DELAY_MS 1 // 非DMA模式采样间隔
+#define ADC_SAMPLE_DELAY_MS 1  // 非DMA模式采样间隔
 
 // DMA模式开关
 #ifndef NTC_USE_DMA
-#define NTC_USE_DMA 1 // 默认启用DMA
+#define NTC_USE_DMA 1  // 默认启用DMA
 #endif
 
 // 传感器故障检测阈值
@@ -35,11 +35,11 @@
 #endif
 
 // DMA双缓冲区开关
-#define USE_DOUBLE_BUFFER 1    // 启用双缓冲区
-#define ADC_DMA_BUFFER_SIZE 16 // DMA缓冲区大小
+#define USE_DOUBLE_BUFFER 1     // 启用双缓冲区
+#define ADC_DMA_BUFFER_SIZE 16  // DMA缓冲区大小
 
 // 快速查找表开关
-#define USE_FAST_LOOKUP 1 // 启用快速查表
+#define USE_FAST_LOOKUP 1  // 启用快速查表
 
 // ========== 查表数据 ==========
 // 优化：使用const和static确保数据放在Flash
@@ -66,26 +66,26 @@ static const int8_t NTC_temperature_table[] = {
 #define NTC_TABLE_SIZE (sizeof(NTC_adc_table) / sizeof(NTC_adc_table[0]))
 
 // ========== 全局状态 ==========
-static uint32_t adc_raw[NTC_NUM];               // 原始采样数据
-static uint32_t adc_moving_buf[MOVING_AVG_LEN]; // 滑动平均缓冲区
-static uint8_t moving_idx = 0;                  // 滑动平均索引
-static float last_filtered_temp = 25.0f;        // 上次滤波温度
-static uint8_t is_first = 1;                    // 首次运行标志
-static float g_temp_offset = 0.0f;              // 温度补偿偏移量
+static uint32_t adc_raw[NTC_NUM];                // 原始采样数据
+static uint32_t adc_moving_buf[MOVING_AVG_LEN];  // 滑动平均缓冲区
+static uint8_t moving_idx = 0;                   // 滑动平均索引
+static float last_filtered_temp = 25.0f;         // 上次滤波温度
+static uint8_t is_first = 1;                     // 首次运行标志
+static float g_temp_offset = 0.0f;               // 温度补偿偏移量
 
 // 传感器故障检测
-static uint32_t ntc_last_raw_adc = 0;           // 上一次ADC原始值
-static uint8_t  ntc_stuck_counter = 0;          // 卡死计数器
-static bool     ntc_fault_active = false;       // 故障标志
+static uint32_t ntc_last_raw_adc = 0;  // 上一次ADC原始值
+static uint8_t ntc_stuck_counter = 0;  // 卡死计数器
+static bool ntc_fault_active = false;  // 故障标志
 
 #if NTC_USE_DMA
 // DMA相关变量
 #if USE_DOUBLE_BUFFER
-static uint32_t adc_dma_buf[2][ADC_DMA_BUFFER_SIZE]; // 双缓冲区
-static volatile uint8_t active_buf = 0;              // 当前活动缓冲区
-static volatile uint8_t data_ready = 0;              // 数据就绪标志
+static uint32_t adc_dma_buf[2][ADC_DMA_BUFFER_SIZE];  // 双缓冲区
+static volatile uint8_t active_buf = 0;               // 当前活动缓冲区
+static volatile uint8_t data_ready = 0;               // 数据就绪标志
 #else
-static uint32_t adc_dma_buf[ADC_DMA_BUFFER_SIZE]; // 单缓冲区
+static uint32_t adc_dma_buf[ADC_DMA_BUFFER_SIZE];  // 单缓冲区
 #endif
 #endif
 
@@ -186,17 +186,17 @@ static uint32_t moving_average_opt(uint32_t new_val)
     // 减去最旧的值，加上最新的值
     sum = sum - adc_moving_buf[moving_idx] + new_val;
     adc_moving_buf[moving_idx] = new_val;
-    moving_idx = (moving_idx + 1) & (MOVING_AVG_LEN - 1); // 要求MOVING_AVG_LEN为2的幂
+    moving_idx = (moving_idx + 1) & (MOVING_AVG_LEN - 1);  // 要求MOVING_AVG_LEN为2的幂
 
     // 使用移位进行除法（假设MOVING_AVG_LEN是2的幂）
 #if (MOVING_AVG_LEN == 4)
-    return sum >> 2; // 除以4
+    return sum >> 2;  // 除以4
 #elif (MOVING_AVG_LEN == 8)
-    return sum >> 3; // 除以8
+    return sum >> 3;  // 除以8
 #elif (MOVING_AVG_LEN == 16)
-    return sum >> 4; // 除以16
+    return sum >> 4;  // 除以16
 #else
-    return sum / MOVING_AVG_LEN; // 通用除法
+    return sum / MOVING_AVG_LEN;  // 通用除法
 #endif
 }
 
@@ -292,7 +292,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if (hadc->Instance == ADC1) {
         // 切换缓冲区并设置数据就绪标志
-        active_buf ^= 1; // 切换0/1
+        active_buf ^= 1;  // 切换0/1
         data_ready = 1;
 
         // 重新配置DMA到新缓冲区
@@ -305,10 +305,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 static int extract_dma_data(uint32_t* dest, uint8_t n)
 {
     if (!data_ready) {
-        return -1; // 数据未就绪
+        return -1;  // 数据未就绪
     }
 
-    uint8_t ready_buf = active_buf ^ 1; // 获取就绪的缓冲区
+    uint8_t ready_buf = active_buf ^ 1;  // 获取就绪的缓冲区
 
     // 提取最新的n个数据
     for (uint8_t i = 0; i < n; i++) {
@@ -316,7 +316,7 @@ static int extract_dma_data(uint32_t* dest, uint8_t n)
         dest[i] = adc_dma_buf[ready_buf][idx];
     }
 
-    data_ready = 0; // 清除标志
+    data_ready = 0;  // 清除标志
     return 0;
 }
 #else
@@ -332,7 +332,7 @@ static int extract_dma_data(uint32_t* dest, uint8_t n)
 }
 #endif
 
-#endif // NTC_USE_DMA
+#endif  // NTC_USE_DMA
 
 // ========== 核心采样函数 ==========
 static int ntc_sample_and_filter(uint32_t* p_adc_out)
@@ -376,7 +376,7 @@ static int ntc_sample_and_filter(uint32_t* p_adc_out)
     HAL_ADC_Start(&hadc1);
 
     for (uint8_t i = 0; i < NTC_NUM; i++) {
-        if (HAL_ADC_PollForConversion(&hadc1, 2) == HAL_OK) { // 减少超时时间
+        if (HAL_ADC_PollForConversion(&hadc1, 2) == HAL_OK) {  // 减少超时时间
             tmp_buffer[i] = HAL_ADC_GetValue(&hadc1);
         } else {
             tmp_buffer[i] = ADC_MAX_VALUE / 2;
@@ -389,7 +389,7 @@ static int ntc_sample_and_filter(uint32_t* p_adc_out)
     uint32_t med = median_filter_opt(tmp_buffer, NTC_NUM);
     final_adc = moving_average_opt(med);
 
-#endif // NTC_USE_DMA
+#endif  // NTC_USE_DMA
 
     *p_adc_out = final_adc;
     return 0;
@@ -425,7 +425,7 @@ void ntc_init(void)
     }
     HAL_ADC_Start_DMA(&hadc1, adc_dma_buf, ADC_DMA_BUFFER_SIZE);
 #endif
-#endif // NTC_USE_DMA
+#endif  // NTC_USE_DMA
 
     // 初始化状态变量
     last_filtered_temp = 25.0f;
@@ -503,7 +503,7 @@ int ntc_read(float* temperature)
         } else {
             // 返回上次的有效温度
             *temperature = last_filtered_temp;
-            return -2; // 采样失败但返回缓存的温度
+            return -2;  // 采样失败但返回缓存的温度
         }
     }
 
@@ -515,12 +515,12 @@ int ntc_read(float* temperature)
     // 传感器故障检测
     if (ntc_detect_fault(adc_val)) {
         *temperature = last_filtered_temp;
-        return -4; // 传感器故障
+        return -4;  // 传感器故障
     }
 
     // 查表计算温度
     float raw_temp = interpolate_temperature_fast(adc_val);
-    raw_temp += g_temp_offset; // 应用温度补偿偏移量
+    raw_temp += g_temp_offset;  // 应用温度补偿偏移量
 
     // 低通滤波
     float filtered_temp;
@@ -541,7 +541,7 @@ int ntc_read(float* temperature)
             last_valid_temp = filtered_temp;
         }
         *temperature = last_valid_temp;
-        return -3; // 温度超出范围
+        return -3;  // 温度超出范围
     }
 
     *temperature = filtered_temp;
@@ -584,7 +584,7 @@ int ntc_get_raw_samples(uint32_t* buffer, uint8_t size)
 #endif
 
 #if USE_DOUBLE_BUFFER
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_dma_buf[active_buf], ADC_DMA_BUFFER_SIZE);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_dma_buf[active_buf], ADC_DMA_BUFFER_SIZE);
 #else
     HAL_ADC_Start_DMA(&hadc1, adc_dma_buf, ADC_DMA_BUFFER_SIZE);
 #endif

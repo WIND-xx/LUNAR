@@ -8,30 +8,27 @@
 /**
  * @brief 加热状态枚举
  */
-typedef enum
-{
-    HEAT_STATUS_STOP    = 0,    ///< 加热停止
-    HEAT_STATUS_RUNNING = 1     ///< 加热运行
+typedef enum {
+    HEAT_STATUS_STOP = 0,    ///< 加热停止
+    HEAT_STATUS_RUNNING = 1  ///< 加热运行
 } HeatStatus;
 
 /**
  * @brief 加热档位枚举
  */
-typedef enum
-{
-    HEAT_LEVEL_1 = 0,           ///< 加热档位1
-    HEAT_LEVEL_2,               ///< 加热档位2
-    HEAT_LEVEL_3,               ///< 加热档位3
-    HEAT_LEVEL_MAX = HEAT_LEVEL_3 ///< 最大档位（用于边界校验）
+typedef enum {
+    HEAT_LEVEL_1 = 0,              ///< 加热档位1
+    HEAT_LEVEL_2,                  ///< 加热档位2
+    HEAT_LEVEL_3,                  ///< 加热档位3
+    HEAT_LEVEL_MAX = HEAT_LEVEL_3  ///< 最大档位（用于边界校验）
 } HeatLevel;
 
 /**
  * @brief 档位-目标温度映射表（集中配置，方便修改）
  */
-typedef struct
-{
-    HeatLevel level;            ///< 加热档位
-    float target_temp;          ///< 对应目标温度(℃)
+typedef struct {
+    HeatLevel level;    ///< 加热档位
+    float target_temp;  ///< 对应目标温度(℃)
 } HeatLevelTempMap;
 
 /* 状态上传回调（上层注册，解耦协议层） */
@@ -98,4 +95,4 @@ HeatLevel heat_level_get(void);
  */
 uint16_t heat_remain_time_get(void);
 
-#endif // HEAT_TASK_H
+#endif  // HEAT_TASK_H

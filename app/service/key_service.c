@@ -14,14 +14,14 @@
 /*============================================================================
  * 扫描状态
  *============================================================================*/
-static uint8_t  s_key_before   = 0;    // 上一轮按键值
-static uint8_t  s_key_state    = 0;    // 事件状态（0=等待, 1=长按已触发）
-static uint16_t s_key_counter  = 0;    // 按下持续计数
+static uint8_t s_key_before = 0;    // 上一轮按键值
+static uint8_t s_key_state = 0;     // 事件状态（0=等待, 1=长按已触发）
+static uint16_t s_key_counter = 0;  // 按下持续计数
 
 /*============================================================================
  * 按键扫描任务（20ms周期）
  *============================================================================*/
-static void key_scan_task(void *arg)
+static void key_scan_task(void* arg)
 {
     (void)arg;
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -32,9 +32,8 @@ static void key_scan_task(void *arg)
         if (s_key_before == 0 && now != 0) {
             /* 按键刚按下 */
             s_key_counter = 0;
-            s_key_state   = 0;
-        }
-        else if (s_key_before != 0 && now == 0) {
+            s_key_state = 0;
+        } else if (s_key_before != 0 && now == 0) {
             /* 按键释放 */
             if (s_key_state == 0) {
                 if (s_key_counter < KEY_LONG_PRESS_TICKS) {
@@ -43,8 +42,7 @@ static void key_scan_task(void *arg)
                 }
             }
             s_key_counter = 0;
-        }
-        else if (now != 0) {
+        } else if (now != 0) {
             /* 按键持续按下 */
             s_key_counter++;
             if (s_key_counter >= KEY_LONG_PRESS_TICKS && s_key_state == 0) {

@@ -4,14 +4,17 @@
 #include "tim.h"
 
 typedef struct {
-    pwm_driver_t pwm;      // PWM驱动句柄
-    uint8_t current_power; // 当前功率百分比
-    bool is_initialized;   // 初始化状态标记
+    pwm_driver_t pwm;       // PWM驱动句柄
+    uint8_t current_power;  // 当前功率百分比
+    bool is_initialized;    // 初始化状态标记
 } heat_dev_t;
 
 static heat_dev_t s_heat_dev = {.current_power = 0, .is_initialized = false};
 
-static bool heat_is_initialized(void) { return s_heat_dev.is_initialized; }
+static bool heat_is_initialized(void)
+{
+    return s_heat_dev.is_initialized;
+}
 
 bool heat_init(void)
 {
@@ -23,7 +26,7 @@ bool heat_init(void)
     // 配置PWM驱动参数
     s_heat_dev.pwm.htim = &htim1;
     s_heat_dev.pwm.channel = TIM_CHANNEL_4;
-    s_heat_dev.pwm.resolution = (uint32_t)htim1.Init.Period + 1; // 100（因为 Period=99）
+    s_heat_dev.pwm.resolution = (uint32_t)htim1.Init.Period + 1;  // 100（因为 Period=99）
 
     return true;
 }
@@ -42,8 +45,14 @@ void heat_deinit(void)
     s_heat_dev.is_initialized = false;
 }
 
-bool heat_start(void) { return pwm_driver_start(&s_heat_dev.pwm) == HAL_OK; }
-bool heat_stop(void)  { return pwm_driver_stop(&s_heat_dev.pwm) == HAL_OK; }
+bool heat_start(void)
+{
+    return pwm_driver_start(&s_heat_dev.pwm) == HAL_OK;
+}
+bool heat_stop(void)
+{
+    return pwm_driver_stop(&s_heat_dev.pwm) == HAL_OK;
+}
 
 bool heat_set_power(uint8_t power_percent)
 {

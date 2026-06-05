@@ -31,12 +31,9 @@ bool buzzer_beep(uint32_t duration_ms)
 {
     // 首次调用时创建一次性定时器
     if (xBeepTimer == NULL) {
-        xBeepTimer = xTimerCreate("BeepTimer",
-                                  pdMS_TO_TICKS(duration_ms),
-                                  pdFALSE,
-                                  (void *)0,
-                                  vBeepTimerCallback);
-        if (xBeepTimer == NULL) return false;
+        xBeepTimer = xTimerCreate("BeepTimer", pdMS_TO_TICKS(duration_ms), pdFALSE, (void*)0, vBeepTimerCallback);
+        if (xBeepTimer == NULL)
+            return false;
     } else {
         // 若正在运行，先停止
         if (xTimerIsTimerActive(xBeepTimer) != pdFALSE) {

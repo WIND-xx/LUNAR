@@ -13,7 +13,11 @@
 extern "C" {
 #endif
 
-typedef enum { KEY_EVENT_NONE = 0, KEY_EVENT_SHORT_PRESS, KEY_EVENT_LONG_PRESS } key_event_t;
+typedef enum {
+    KEY_EVENT_NONE = 0,
+    KEY_EVENT_SHORT_PRESS,
+    KEY_EVENT_LONG_PRESS
+} key_event_t;
 
 void key_service_init(void);
 

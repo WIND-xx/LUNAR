@@ -11,11 +11,10 @@
 /**
  * @brief LED硬件配置结构体
  */
-typedef struct
-{
-    GPIO_TypeDef *port;         // GPIO端口
-    uint16_t      pin;          // GPIO引脚
-    GPIO_PinState active_level; // 有效点亮电平
+typedef struct {
+    GPIO_TypeDef* port;          // GPIO端口
+    uint16_t pin;                // GPIO引脚
+    GPIO_PinState active_level;  // 有效点亮电平
 } led_hw_config_t;
 
 /**
@@ -32,17 +31,16 @@ static const led_hw_config_t monochrome_led_config[LED_RF + 1] = {
  * @brief 彩色LED通道配置
  */
 static const led_hw_config_t color_led_config[1] = {
-    [0] = {LED_B_GPIO_Port, LED_B_Pin, GPIO_PIN_RESET}, // 蓝色LED
+    [0] = {LED_B_GPIO_Port, LED_B_Pin, GPIO_PIN_RESET},  // 蓝色LED
 };
 
 /**
  * @brief LED控制状态结构体
  */
-typedef struct
-{
-    led_mode_t mode;        // 工作模式
-    uint32_t   interval_ms; // 闪烁间隔(ms)
-    TickType_t next_toggle; // 下一次翻转的时间戳
+typedef struct {
+    led_mode_t mode;         // 工作模式
+    uint32_t interval_ms;    // 闪烁间隔(ms)
+    TickType_t next_toggle;  // 下一次翻转的时间戳
 } led_control_t;
 
 /**
@@ -67,23 +65,20 @@ static TimerHandle_t blink_timer = NULL;
  */
 static void led_hw_set(LED_Index idx, bool on)
 {
-    if (idx >= LED_COUNT) return;
+    if (idx >= LED_COUNT)
+        return;
 
-    if (idx <= LED_RF)
-    {
+    if (idx <= LED_RF) {
         // 单色LED控制
-        const led_hw_config_t *config = &monochrome_led_config[idx];
-        GPIO_PinState          state =
+        const led_hw_config_t* config = &monochrome_led_config[idx];
+        GPIO_PinState state =
             on ? config->active_level : (config->active_level == GPIO_PIN_SET ? GPIO_PIN_RESET : GPIO_PIN_SET);
         HAL_GPIO_WritePin(config->port, config->pin, state);
-    }
-    else
-    {
+    } else {
         // 彩色LED控制 - 简化为只支持LED_B
-        if (idx == LED_B)
-        {
-            const led_hw_config_t *config = &color_led_config[0];
-            GPIO_PinState          state =
+        if (idx == LED_B) {
+            const led_hw_config_t* config = &color_led_config[0];
+            GPIO_PinState state =
                 on ? config->active_level : (config->active_level == GPIO_PIN_SET ? GPIO_PIN_RESET : GPIO_PIN_SET);
             HAL_GPIO_WritePin(config->port, config->pin, state);
         }
@@ -97,20 +92,17 @@ static void led_hw_set(LED_Index idx, bool on)
  */
 static bool led_hw_get(LED_Index idx)
 {
-    if (idx >= LED_COUNT) return false;
+    if (idx >= LED_COUNT)
+        return false;
 
-    if (idx <= LED_RF)
-    {
+    if (idx <= LED_RF) {
         // 读取单色LED状态
-        const led_hw_config_t *config = &monochrome_led_config[idx];
+        const led_hw_config_t* config = &monochrome_led_config[idx];
         return (HAL_GPIO_ReadPin(config->port, config->pin) == config->active_level);
-    }
-    else
-    {
+    } else {
         // 只读取蓝色LED状态
-        if (idx == LED_B)
-        {
-            const led_hw_config_t *config = &color_led_config[0];
+        if (idx == LED_B) {
+            const led_hw_config_t* config = &color_led_config[0];
             return (HAL_GPIO_ReadPin(config->port, config->pin) == config->active_level);
         }
     }
@@ -126,17 +118,17 @@ static bool led_hw_get(LED_Index idx)
  */
 static void led_set_mode_internal(LED_Index idx, led_mode_t mode, uint32_t interval_ms)
 {
-    if (idx >= LED_COUNT) return;
+    if (idx >= LED_COUNT)
+        return;
 
     led_controls[idx].mode = mode;
 
-    switch (mode)
-    {
+    switch (mode) {
         case LED_MODE_BLINK:
             // 设置闪烁参数
             led_controls[idx].interval_ms = (interval_ms > 0) ? interval_ms : 500;
             led_controls[idx].next_toggle = xTaskGetTickCount() + pdMS_TO_TICKS(led_controls[idx].interval_ms);
-            led_hw_set(idx, true); // 初始状态为点亮
+            led_hw_set(idx, true);  // 初始状态为点亮
             break;
 
         case LED_MODE_ON:
@@ -156,23 +148,20 @@ static void led_set_mode_internal(LED_Index idx, led_mode_t mode, uint32_t inter
  */
 static void blink_timer_callback(TimerHandle_t timer)
 {
-    (void) timer; // 未使用参数
+    (void)timer;  // 未使用参数
 
-    if (led_mutex == NULL) return;
+    if (led_mutex == NULL)
+        return;
 
     // 尝试获取锁，立即返回如果获取失败
-    if (xSemaphoreTake(led_mutex, 0) == pdTRUE)
-    {
+    if (xSemaphoreTake(led_mutex, 0) == pdTRUE) {
         TickType_t now = xTaskGetTickCount();
 
         // 更新所有闪烁模式的LED
-        for (LED_Index idx = 0; idx < LED_COUNT; idx++)
-        {
-            if (led_controls[idx].mode == LED_MODE_BLINK)
-            {
+        for (LED_Index idx = 0; idx < LED_COUNT; idx++) {
+            if (led_controls[idx].mode == LED_MODE_BLINK) {
                 // 检查是否到达翻转时间
-                if ((int32_t) (now - led_controls[idx].next_toggle) >= 0)
-                {
+                if ((int32_t)(now - led_controls[idx].next_toggle) >= 0) {
                     // 翻转LED状态
                     bool current_state = led_hw_get(idx);
                     led_hw_set(idx, !current_state);
@@ -190,21 +179,18 @@ static void blink_timer_callback(TimerHandle_t timer)
 void led_init(void)
 {
     // 创建互斥锁（确保只创建一次）
-    if (led_mutex == NULL)
-    {
+    if (led_mutex == NULL) {
         led_mutex = xSemaphoreCreateMutex();
         configASSERT(led_mutex != NULL);
     }
 
     // 初始化所有LED状态
-    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE)
-    {
-        for (LED_Index idx = 0; idx < LED_COUNT; idx++)
-        {
+    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        for (LED_Index idx = 0; idx < LED_COUNT; idx++) {
             led_controls[idx].mode = LED_MODE_OFF;
             led_controls[idx].interval_ms = 500;
             led_controls[idx].next_toggle = 0;
-            led_hw_set(idx, false); // 初始状态为关闭
+            led_hw_set(idx, false);  // 初始状态为关闭
         }
 
         // 默认点亮蓝色LED（可根据需求调整）
@@ -214,11 +200,10 @@ void led_init(void)
     }
 
     // 创建并启动闪烁定时器（周期50ms）
-    if (blink_timer == NULL)
-    {
+    if (blink_timer == NULL) {
         blink_timer = xTimerCreate("LED_Blink",
-                                   pdMS_TO_TICKS(50), // 50ms周期
-                                   pdTRUE,            // 自动重载
+                                   pdMS_TO_TICKS(50),  // 50ms周期
+                                   pdTRUE,             // 自动重载
                                    NULL, blink_timer_callback);
 
         configASSERT(blink_timer != NULL);
@@ -228,11 +213,11 @@ void led_init(void)
 
 void led_set_mode(LED_Index idx, led_mode_t mode, uint32_t interval_ms)
 {
-    if (led_mutex == NULL || idx >= LED_COUNT) return;
+    if (led_mutex == NULL || idx >= LED_COUNT)
+        return;
 
     // 尝试获取锁，超时时间10ms
-    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE)
-    {
+    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
         led_set_mode_internal(idx, mode, interval_ms);
         xSemaphoreGive(led_mutex);
     }
@@ -240,13 +225,13 @@ void led_set_mode(LED_Index idx, led_mode_t mode, uint32_t interval_ms)
 
 bool led_get(LED_Index idx)
 {
-    if (idx >= LED_COUNT || led_mutex == NULL) return false;
+    if (idx >= LED_COUNT || led_mutex == NULL)
+        return false;
 
     bool state = false;
 
     // 尝试获取锁，超时时间10ms
-    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE)
-    {
+    if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
         state = led_hw_get(idx);
         xSemaphoreGive(led_mutex);
     }
@@ -256,11 +241,12 @@ bool led_get(LED_Index idx)
 
 void led_time_select(uint16_t seconds)
 {
-    if (led_mutex == NULL) return;
+    if (led_mutex == NULL)
+        return;
 
     if (xSemaphoreTake(led_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-        static const uint32_t SEC_10 = 10U * 60U; // 600
-        static const uint32_t SEC_30 = 30U * 60U; // 1800
+        static const uint32_t SEC_10 = 10U * 60U;  // 600
+        static const uint32_t SEC_30 = 30U * 60U;  // 1800
 
         // 先关闭所有时间指示灯
         led_set_mode_internal(LED_10MIN, LED_MODE_OFF, 0);

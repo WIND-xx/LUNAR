@@ -11,11 +11,11 @@ typedef struct {
 } rtc_datetime_t;
 
 HAL_StatusTypeDef rtc_init(void);
-HAL_StatusTypeDef rtc_set_datetime(rtc_datetime_t *dt);
-HAL_StatusTypeDef rtc_get_datetime(rtc_datetime_t *dt);
-uint32_t          rtc_get_utc(void);
+HAL_StatusTypeDef rtc_set_datetime(rtc_datetime_t* dt);
+HAL_StatusTypeDef rtc_get_datetime(rtc_datetime_t* dt);
+uint32_t rtc_get_utc(void);
 HAL_StatusTypeDef rtc_set_utc(uint32_t utc);
-void              rtc_utc_to_datetime(uint32_t utc, rtc_datetime_t *dt);
-uint32_t          rtc_datetime_to_utc(rtc_datetime_t *dt);
+void rtc_utc_to_datetime(uint32_t utc, rtc_datetime_t* dt);
+uint32_t rtc_datetime_to_utc(rtc_datetime_t* dt);
 
 #endif

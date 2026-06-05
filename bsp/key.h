@@ -3,8 +3,7 @@
 #define __KEY_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*----------------------------------include-----------------------------------*/
@@ -13,8 +12,7 @@ extern "C"
 /*-----------------------------------macro------------------------------------*/
 
 /*----------------------------------typedef-----------------------------------*/
-typedef enum
-{
+typedef enum {
     KEY_NULL = 0,
     KEY_MUSIC = 1,
     KEY_BLUETOOTH = 2,
@@ -40,7 +38,7 @@ typedef enum
 
 /*----------------------------------function----------------------------------*/
 unsigned char get_key(void);
-void key_init(void);      // GPIO初始化（仅调用一次）
+void key_init(void);  // GPIO初始化（仅调用一次）
 /*------------------------------------test------------------------------------*/
 
 #ifdef __cplusplus
