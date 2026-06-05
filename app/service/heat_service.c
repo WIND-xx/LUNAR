@@ -1,6 +1,6 @@
 /**
  * @file heat_service.c
- * @brief 加热控制服务（PID温控 + 定时 + 状态机）
+ * @brief 加热控制服务（PID温控 + 定时 + 状态机�?
  * @version 1.0
  */
 
@@ -26,7 +26,7 @@ void heat_service_set_upload_handler(heat_upload_cb_t cb)
     s_upload_cb = cb;
 }
 
-/* ---- 档位-温度映射表 ---- */
+/* ---- 档位-温度映射�?---- */
 static const HeatLevelTempMap s_heat_level_temp_map[] = {
     {HEAT_LEVEL_1, 35.0f}, {HEAT_LEVEL_2, 45.0f}, {HEAT_LEVEL_3, 55.0f}};
 
@@ -76,12 +76,12 @@ static HeatTaskPrivData s_heat_data = {.status = HEAT_STATUS_STOP,
                                        .remain_timer = NULL,
                                        .ntc_fail_count = 0};
 
-/* ---- 锁 ---- */
+/* ---- �?---- */
 static bool heat_lock_internal(void)
 {
     bool ok = (xSemaphoreTake(s_heat_data.mutex, pdMS_TO_TICKS(HEAT_MUTEX_TIMEOUT_MS)) == pdTRUE);
     if (!ok)
-        bt401_printf("Heat mutex lock failed!\r\n");
+        LOG_PRINTF("Heat mutex lock failed!\r\n");
     return ok;
 }
 #define HEAT_LOCK() heat_lock_internal()
@@ -109,7 +109,7 @@ static void heat_hw_turn_on(void)
         led_set_mode(LED_RF, LED_MODE_ON, 0);
 }
 
-/* ---- 停止所有加热 ---- */
+/* ---- 停止所有加�?---- */
 static void heat_stop_all(void)
 {
     HeatStatus old_status = HEAT_STATUS_STOP;
@@ -135,7 +135,7 @@ static void heat_stop_all(void)
     }
 }
 
-/* ---- 定时器回调 ---- */
+/* ---- 定时器回�?---- */
 static void heating_timer_callback(TimerHandle_t xTimer)
 {
     (void)xTimer;
@@ -221,7 +221,7 @@ static void process_msg_set_status(HeatStatus new_status)
 static void process_msg_set_level(HeatLevel new_level)
 {
     if (new_level > HEAT_LEVEL_MAX) {
-        bt401_printf("Invalid heat level: %d\r\n", new_level);
+        LOG_PRINTF("Invalid heat level: %d\r\n", new_level);
         return;
     }
     float t = heat_get_temp_by_level(new_level);
@@ -230,13 +230,13 @@ static void process_msg_set_level(HeatLevel new_level)
         s_heat_data.target_temperature = t;
         HEAT_UNLOCK();
     }
-    bt401_printf("Heat level set to %d, target: %.1fC\r\n", new_level, t);
+    LOG_PRINTF("Heat level set to %d, target: %.1fC\r\n", new_level, t);
 }
 
 static void process_msg_set_timer(uint16_t minute)
 {
     if (minute > HEAT_MAX_TIMER_MIN) {
-        bt401_printf("Invalid timer: %d min (max: %d)\r\n", minute, HEAT_MAX_TIMER_MIN);
+        LOG_PRINTF("Invalid timer: %d min (max: %d)\r\n", minute, HEAT_MAX_TIMER_MIN);
         return;
     }
     HeatStatus st = HEAT_STATUS_STOP;
@@ -287,7 +287,7 @@ static void process_heat_message(const HeatMsg* msg)
             process_msg_set_timer(msg->param.minute);
             break;
         default:
-            bt401_printf("Unknown heat msg: %d\r\n", msg->type);
+            LOG_PRINTF("Unknown heat msg: %d\r\n", msg->type);
             break;
     }
     if (s_upload_cb)
@@ -304,7 +304,7 @@ static bool heat_read_ntc_temp(float* temp)
         return true;
     }
     s_heat_data.ntc_fail_count++;
-    bt401_printf("NTC read fail, count: %d\r\n", s_heat_data.ntc_fail_count);
+    LOG_PRINTF("NTC read fail, count: %d\r\n", s_heat_data.ntc_fail_count);
     return false;
 }
 
@@ -330,10 +330,10 @@ static void heat_pid_control(void)
     heat_set_power(out);
     int16_t ts = (int16_t)(curr * 10.0f + 0.5f);
     int16_t gs = (int16_t)(s_heat_data.target_temperature * 10.0f + 0.5f);
-    bt401_printf("Temp: %d.%d Target: %d.%d PWM: %u%%\r\n", ts / 10, ts % 10, gs / 10, gs % 10, out);
+    LOG_PRINTF("Temp: %d.%d Target: %d.%d PWM: %u%%\r\n", ts / 10, ts % 10, gs / 10, gs % 10, out);
 }
 
-/* ---- 主任务 ---- */
+/* ---- 主任�?---- */
 static void heat_control_task(void* arg)
 {
     (void)arg;
@@ -372,13 +372,13 @@ static bool heat_create_freertos_resources(void)
 {
     s_heat_data.mutex = xSemaphoreCreateMutex();
     if (!s_heat_data.mutex) {
-        bt401_printf("Create heat mutex failed!\r\n");
+        LOG_PRINTF("Create heat mutex failed!\r\n");
         return false;
     }
 
     s_heat_data.ctrl_queue = xQueueCreate(HEAT_QUEUE_LEN, sizeof(HeatMsg));
     if (!s_heat_data.ctrl_queue) {
-        bt401_printf("Create heat queue failed!\r\n");
+        LOG_PRINTF("Create heat queue failed!\r\n");
         vSemaphoreDelete(s_heat_data.mutex);
         s_heat_data.mutex = NULL;
         return false;
@@ -386,7 +386,7 @@ static bool heat_create_freertos_resources(void)
 
     s_heat_data.heating_timer = xTimerCreate("HeatTimer", pdMS_TO_TICKS(1000), pdFALSE, NULL, heating_timer_callback);
     if (!s_heat_data.heating_timer) {
-        bt401_printf("Create heating timer failed!\r\n");
+        LOG_PRINTF("Create heating timer failed!\r\n");
         vQueueDelete(s_heat_data.ctrl_queue);
         vSemaphoreDelete(s_heat_data.mutex);
         s_heat_data.ctrl_queue = NULL;
@@ -396,7 +396,7 @@ static bool heat_create_freertos_resources(void)
 
     s_heat_data.remain_timer = xTimerCreate("RemainTimer", pdMS_TO_TICKS(1000), pdTRUE, NULL, remain_timer_callback);
     if (!s_heat_data.remain_timer) {
-        bt401_printf("Create remain timer failed!\r\n");
+        LOG_PRINTF("Create remain timer failed!\r\n");
         xTimerDelete(s_heat_data.heating_timer, 0);
         vQueueDelete(s_heat_data.ctrl_queue);
         vSemaphoreDelete(s_heat_data.mutex);
@@ -411,7 +411,7 @@ static bool heat_create_freertos_resources(void)
 bool heat_task_init(void)
 {
     if (s_heat_data.mutex) {
-        bt401_printf("Heat task already initialized!\r\n");
+        LOG_PRINTF("Heat task already initialized!\r\n");
         return true;
     }
     if (!heat_create_freertos_resources())
@@ -419,7 +419,7 @@ bool heat_task_init(void)
 
     BaseType_t ret = xTaskCreate(heat_control_task, TASK_HEAT_NAME, TASK_HEAT_STACK, NULL, TASK_HEAT_PRIORITY, NULL);
     if (ret != pdPASS) {
-        bt401_printf("Create heat task failed!\r\n");
+        LOG_PRINTF("Create heat task failed!\r\n");
         xTimerDelete(s_heat_data.remain_timer, 0);
         xTimerDelete(s_heat_data.heating_timer, 0);
         vQueueDelete(s_heat_data.ctrl_queue);
@@ -430,7 +430,7 @@ bool heat_task_init(void)
         s_heat_data.mutex = NULL;
         return false;
     }
-    bt401_printf("Heat task init success!\r\n");
+    LOG_PRINTF("Heat task init success!\r\n");
     return true;
 }
 
@@ -453,17 +453,17 @@ void heat_task_deinit(void)
         vSemaphoreDelete(s_heat_data.mutex);
         s_heat_data.mutex = NULL;
     }
-    bt401_printf("Heat task deinit success!\r\n");
+    LOG_PRINTF("Heat task deinit success!\r\n");
 }
 
 bool heat_status_set(HeatStatus status)
 {
     if (status != HEAT_STATUS_STOP && status != HEAT_STATUS_RUNNING) {
-        bt401_printf("Invalid heat status: %d\r\n", status);
+        LOG_PRINTF("Invalid heat status: %d\r\n", status);
         return false;
     }
     if (!s_heat_data.ctrl_queue) {
-        bt401_printf("Heat queue not initialized!\r\n");
+        LOG_PRINTF("Heat queue not initialized!\r\n");
         return false;
     }
     HeatMsg msg = {.type = MSG_SET_STATUS, .param.status = status};
@@ -483,11 +483,11 @@ void heat_status_switch(void)
 bool heat_level_set(HeatLevel level)
 {
     if (level > HEAT_LEVEL_MAX) {
-        bt401_printf("Invalid heat level: %d\r\n", level);
+        LOG_PRINTF("Invalid heat level: %d\r\n", level);
         return false;
     }
     if (!s_heat_data.ctrl_queue) {
-        bt401_printf("Heat queue not initialized!\r\n");
+        LOG_PRINTF("Heat queue not initialized!\r\n");
         return false;
     }
     HeatMsg msg = {.type = MSG_SET_LEVEL, .param.level = level};
@@ -521,11 +521,11 @@ void heat_level_down(void)
 bool heat_timer_set(uint16_t minute)
 {
     if (minute > HEAT_MAX_TIMER_MIN) {
-        bt401_printf("Invalid timer: %d min (max: %d)\r\n", minute, HEAT_MAX_TIMER_MIN);
+        LOG_PRINTF("Invalid timer: %d min (max: %d)\r\n", minute, HEAT_MAX_TIMER_MIN);
         return false;
     }
     if (!s_heat_data.ctrl_queue) {
-        bt401_printf("Heat queue not initialized!\r\n");
+        LOG_PRINTF("Heat queue not initialized!\r\n");
         return false;
     }
     HeatMsg msg = {.type = MSG_SET_TIMER, .param.minute = minute};
