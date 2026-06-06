@@ -78,7 +78,7 @@ extern "C" {
  * Modbus 协议配置
  *============================================================================*/
 #define MODBUS_SLAVE_ADDR 0x01
-#define MODBUS_RESP_BUF_SIZE 256
+#define MODBUS_RESP_BUF_SIZE 128
 #define MODBUS_MAX_REGS_PER_FRAME 125
 
 /*============================================================================
@@ -87,8 +87,8 @@ extern "C" {
 #define LOG_ENABLE 1  // 1=启用日志输出, 0=关闭所有日志
 
 #if LOG_ENABLE
-#include "bt401.h"
-#define LOG_PRINTF(fmt, ...) bt401_printf(fmt, ##__VA_ARGS__)
+#include "app_handles.h"
+#define LOG_PRINTF(fmt, ...) bsp_bt401_printf(g_bt401, fmt, ##__VA_ARGS__)
 #else
 #define LOG_PRINTF(fmt, ...) ((void)0)
 #endif

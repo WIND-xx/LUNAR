@@ -47,15 +47,15 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 set(PROJECT_SOURCES
-    # BSP sources
+    # BSP sources (v2.0 — unified interface, no OS dependency, handle pattern)
+    bsp/bsp_bt401.c
+    bsp/bsp_buzzer.c
+    bsp/bsp_heat.c
+    bsp/bsp_key.c
+    bsp/bsp_led.c
+    bsp/bsp_ntc.c
+    bsp/bsp_pwm.c
     bsp/bsp_rtc.c
-    bsp/bt401.c
-    bsp/buzzer.c
-    bsp/heat.c
-    bsp/key.c
-    bsp/led.c
-    bsp/ntc.c
-    bsp/pwm_driver.c
     
     # Components - PID
     components/pid/pid.c

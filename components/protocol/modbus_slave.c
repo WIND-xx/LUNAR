@@ -6,7 +6,7 @@
 #include "modbus_slave.h"
 #include "FreeRTOS.h"
 #include "bsp_rtc.h"
-#include "bt401.h"
+#include "app_handles.h"
 #include "crc16.h"
 #include "semphr.h"
 #include "task.h"
@@ -156,7 +156,7 @@ static bool process_utc_timestamp(uint16_t start_reg, uint16_t reg_num, const ui
         g_registers[REG_UTC_TIMESTAMP_LOW] = low_val;
 
         // 设置RTC
-        if (rtc_set_utc(utc_full) == 0) {
+        if (bsp_rtc_set_utc(g_rtc, utc_full) == BSP_OK) {
             return true;
         }
     }
@@ -550,7 +550,7 @@ bool protocol_handle_request(const uint8_t* data, size_t len)
         response[resp_len] = (uint8_t)(crc & 0xFF);
         response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
-        bt401_sendbytes(response, resp_len + 2);
+        bsp_bt401_send(g_bt401, response, resp_len + 2);
         return (result == PROTOCOL_SUCCESS);
     }
 
@@ -716,5 +716,5 @@ void protocol_upload_heating_status(void)
     response[resp_len] = (uint8_t)(crc & 0xFF);
     response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
-    bt401_sendbytes(response, resp_len + 2);
+    bsp_bt401_send(g_bt401, response, resp_len + 2);
 }

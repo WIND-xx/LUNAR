@@ -5,7 +5,7 @@
  */
 
 #include "at_parser.h"
-#include "led.h"
+#include "app_handles.h"
 #include <string.h>
 
 /*============================================================================
@@ -73,18 +73,18 @@ void decode_at_command(uint8_t* data, size_t len)
 
     switch (result.cmd) {
         case AT_CMD_QM_OFF:
-            led_set_mode(LED_BT, LED_MODE_OFF, 0);
-            led_set_mode(LED_MUSIC, LED_MODE_OFF, 0);
+            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_OFF, 0);
+            bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_OFF, 0);
             break;
         case AT_CMD_QM_MUSIC:
-            led_set_mode(LED_MUSIC, LED_MODE_ON, 0);
-            led_set_mode(LED_BT, LED_MODE_OFF, 0);
+            bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_ON, 0);
+            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_OFF, 0);
             break;
         case AT_CMD_TS_BLINK:
-            led_set_mode(LED_BT, LED_MODE_BLINK, 500);
+            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_BLINK, 500);
             break;
         case AT_CMD_TS_ON:
-            led_set_mode(LED_BT, LED_MODE_ON, 0);
+            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_ON, 0);
             break;
         default:
             break;

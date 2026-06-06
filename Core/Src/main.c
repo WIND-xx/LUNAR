@@ -101,7 +101,7 @@ int main(void)
     // MX_TIM3_Init();
     MX_ADC1_Init();
     /* USER CODE BEGIN 2 */
-    rtc_init();
+    /* RTC init moved to bsp_all_init() in app_main.c */
     /* USER CODE END 2 */
 
     /* Init scheduler */

@@ -1,15 +1,18 @@
 /**
  * @file ble_service.c
  * @brief BLE服务：帧分发 + 看门狗 + AT命令控制
- * @version 3.0
+ * @version 4.0
  */
 
 #include "ble_service.h"
-#include "FreeRTOS.h"
-#include "bt401.h"
 #include "app_config.h"
-#include "led.h"
+#include "app_handles.h"
+#include "bsp_bt401.h"
+#include "bsp_led.h"
+
+#include "FreeRTOS.h"
 #include "task.h"
+
 #include <string.h>
 
 #ifndef AT_BT_NAME
@@ -34,15 +37,16 @@ void ble_service_set_frame_handler(ble_frame_cb_t cb)
 static void ble_task(void* arg)
 {
     (void)arg;
-    frame_t f = {0};
-    bt401_init();
+    bsp_bt401_frame_t f = {0};
+
     bt_start();
 
     for (;;) {
 #ifdef HAL_IWDG_MODULE_ENABLED
         HAL_IWDG_Refresh(&hiwdg);
 #endif
-        if (bt401_get_frame(&f, pdMS_TO_TICKS(500))) {
+        /* 非阻塞轮询帧 */
+        while (bsp_bt401_get_frame(g_bt401, &f) == BSP_OK) {
             s_stats.total++;
             bool is_modbus =
                 (f.len >= 5 && f.data[0] == 0x01 && (f.data[1] == 0x03 || f.data[1] == 0x06 || f.data[1] == 0x10));
@@ -60,58 +64,54 @@ static void ble_task(void* arg)
             }
             f.len = 0;
         }
+
         if ((s_stats.total % 60000) == 59999) {
-            bt401_printf("BLE: F=%lu M=%lu A=%lu U=%lu Stack=%lu\r\n", s_stats.total, s_stats.modbus, s_stats.at,
-                         s_stats.unknown, uxTaskGetStackHighWaterMark(NULL));
+            LOG_PRINTF("BLE: F=%lu M=%lu A=%lu U=%lu Stack=%lu\r\n",
+                       s_stats.total, s_stats.modbus, s_stats.at,
+                       s_stats.unknown, uxTaskGetStackHighWaterMark(NULL));
         }
+
+        vTaskDelay(pdMS_TO_TICKS(20)); /* 20ms 轮询周期 */
     }
 }
 
 /* ---- AT命令接口 ---- */
 void bt_start(void)
 {
-    bt401_printf("AT+BD%s\r\n", AT_BT_NAME);
+    bsp_bt401_printf(g_bt401, "AT+BD%s\r\n", AT_BT_NAME);
     vTaskDelay(pdMS_TO_TICKS(100));
-    bt401_printf("AT+BM%s\r\n", AT_BLE_NAME);
+    bsp_bt401_printf(g_bt401, "AT+BM%s\r\n", AT_BLE_NAME);
     vTaskDelay(pdMS_TO_TICKS(100));
-    bt401_printf("AT+CG01\r\n");
+    bsp_bt401_printf(g_bt401, "AT+CG01\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
-    bt401_printf("AT+CK00\r\n");
+    bsp_bt401_printf(g_bt401, "AT+CK00\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
-    bt401_printf("AT+B200\r\n");
+    bsp_bt401_printf(g_bt401, "AT+B200\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
-    bt401_printf("AT+CR00\r\n");
+    bsp_bt401_printf(g_bt401, "AT+CR00\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
-    bt401_printf("AT+CN00\r\n");
+    bsp_bt401_printf(g_bt401, "AT+CN00\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
     ble_mode(BT_MODE_BT);
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
-void music_switch(void)
-{
-    bt401_printf("AT+CB\r\n");
-}
-void music_next(void)
-{
-    bt401_printf("AT+CC\r\n");
-}
-void music_prev(void)
-{
-    bt401_printf("AT+CD\r\n");
-}
+void music_switch(void)  { bsp_bt401_printf(g_bt401, "AT+CB\r\n"); }
+void music_next(void)    { bsp_bt401_printf(g_bt401, "AT+CC\r\n"); }
+void music_prev(void)    { bsp_bt401_printf(g_bt401, "AT+CD\r\n"); }
 
 void music_volume_control(volume_dir_t dir)
 {
     if (dir == VOL_DIR_UP)
-        bt401_printf("AT+CE\r\n");
+        bsp_bt401_printf(g_bt401, "AT+CE\r\n");
     if (dir == VOL_DIR_DOWN)
-        bt401_printf("AT+CF\r\n");
+        bsp_bt401_printf(g_bt401, "AT+CF\r\n");
 }
+
 void music_volume_set(uint8_t vol)
 {
     if (vol <= 30)
-        bt401_printf("AT+CA%02d\r\n", vol);
+        bsp_bt401_printf(g_bt401, "AT+CA%02d\r\n", vol);
 }
 
 void ble_mode(bt_mode_t mode)
@@ -120,27 +120,28 @@ void ble_mode(bt_mode_t mode)
     switch (mode) {
         case BT_MODE_OFF:
             c = "AT+CM08\r\n";
-            led_set_mode(LED_BT, LED_MODE_OFF, 0);
-            led_set_mode(LED_MUSIC, LED_MODE_OFF, 0);
+            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_OFF, 0);
+            bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_OFF, 0);
             break;
         case BT_MODE_BT:
             c = "AT+CM01\r\n";
-            led_set_mode(LED_BT, LED_MODE_ON, 0);
+            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_ON, 0);
             break;
         case BT_MODE_MUSIC:
             c = "AT+CM04\r\n";
-            led_set_mode(LED_MUSIC, LED_MODE_ON, 0);
+            bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_ON, 0);
             break;
         default:
             return;
     }
-    bt401_printf(c);
+    bsp_bt401_printf(g_bt401, c);
 }
+
 void ble_query(void)
 {
-    bt401_printf("AT+QM?\r\n");
+    bsp_bt401_printf(g_bt401, "AT+QM?\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
-    bt401_printf("AT+TS\r\n");
+    bsp_bt401_printf(g_bt401, "AT+TS\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
