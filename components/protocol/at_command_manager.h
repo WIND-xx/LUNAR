@@ -7,9 +7,7 @@
 #ifndef AT_COMMAND_MANAGER_H
 #define AT_COMMAND_MANAGER_H
 
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "semphr.h"
+#include "cmsis_os2.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -80,9 +78,9 @@ typedef struct {
 
 /* 管理器结构（全部静态分配） */
 typedef struct {
-    QueueHandle_t request_queue;
-    QueueHandle_t response_queue;
-    SemaphoreHandle_t mutex;
+    osMessageQueueId_t request_queue;
+    osMessageQueueId_t response_queue;
+    osMutexId_t        mutex;
 
     at_cmd_registration_t registrations[AT_CMD_MAX];
     uint8_t reg_count;

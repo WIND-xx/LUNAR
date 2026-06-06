@@ -4,9 +4,6 @@
  * @version 4.0
  */
 
-#include "FreeRTOS.h"
-#include "task.h"
-
 #include "app_config.h"
 #include "app_handles.h"
 #include "event_bus.h"

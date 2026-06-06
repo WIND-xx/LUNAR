@@ -4,12 +4,10 @@
  * @version 2.0
  */
 #include "modbus_slave.h"
-#include "FreeRTOS.h"
+#include "cmsis_os2.h"
 #include "bsp_rtc.h"
 #include "app_handles.h"
 #include "crc16.h"
-#include "semphr.h"
-#include "task.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -44,7 +42,7 @@ const RegisterDescriptor g_register_table[REG_COUNT] = {
 static uint16_t g_registers[REG_COUNT]        = {0};
 static RegisterWriteCallback g_write_callback = NULL;
 static RegisterReadCallback g_read_callback   = NULL;
-static SemaphoreHandle_t g_reg_mutex          = NULL;  // 寄存器互斥锁
+static osMutexId_t g_reg_mutex = NULL;  // 寄存器互斥锁 (CMSIS-RTOS v2)
 
 /* 内部函数声明 */
 static bool is_valid_register(RegisterID reg);
@@ -68,17 +66,14 @@ static ProtocolResult internal_register_write(RegisterID reg, uint16_t value);
  * @note  使用 FreeRTOS 互斥锁替代关中断，避免长时间阻塞系统中断和调度
  *        回调函数在持锁期间执行，调用者需确保回调不会长时间阻塞
  */
-#define REG_LOCK() (xSemaphoreTake(g_reg_mutex, pdMS_TO_TICKS(100)))
-#define REG_UNLOCK() (xSemaphoreGive(g_reg_mutex))
+#define REG_LOCK()   (osMutexAcquire(g_reg_mutex, osWaitForever) == osOK)
+#define REG_UNLOCK() (osMutexRelease(g_reg_mutex))
 
 /**
  * @brief 初始化协议模块（创建互斥锁，需在使用前调用一次）
  */
 void protocol_init(void) {
-    if (g_reg_mutex == NULL) {
-        g_reg_mutex = xSemaphoreCreateMutex();
-        configASSERT(g_reg_mutex != NULL);
-    }
+    if (g_reg_mutex == NULL) { g_reg_mutex = osMutexNew(NULL); }
 }
 
 /**
@@ -161,7 +156,7 @@ static ProtocolResult internal_register_write(RegisterID reg, uint16_t value) {
 
     if (!validate_register_value(reg, value)) { return PROTOCOL_ERR_INVALID_VALUE; }
 
-    if (REG_LOCK() != pdTRUE) { return PROTOCOL_ERR_BUSY; }
+    if (REG_LOCK() != true) { return PROTOCOL_ERR_BUSY; }
 
     // 特殊寄存器处理
     switch (reg) {
@@ -203,7 +198,7 @@ static ProtocolResult handle_read_registers(uint8_t slave_addr, uint16_t start, 
 
     data_buf[data_len++] = (uint8_t)(count * 2);  // 字节数
 
-    if (REG_LOCK() != pdTRUE) { return PROTOCOL_ERR_BUSY; }
+    if (REG_LOCK() != true) { return PROTOCOL_ERR_BUSY; }
 
     for (uint16_t i = 0; i < count; i++) {
         RegisterID reg = start + i;
@@ -257,7 +252,7 @@ static ProtocolResult handle_write_registers(uint8_t slave_addr, uint16_t start,
     }
 
     // ---- 阶段2: 原子写入所有寄存器（互斥锁保护） ----
-    if (REG_LOCK() != pdTRUE) { return PROTOCOL_ERR_BUSY; }
+    if (REG_LOCK() != true) { return PROTOCOL_ERR_BUSY; }
 
     // 处理特殊寄存器组合（如UTC时间戳）
     if (start <= REG_UTC_TIMESTAMP_LOW && (start + count) > REG_UTC_TIMESTAMP_HIGH) {
@@ -506,7 +501,7 @@ ProtocolResult register_batch_write(RegisterID start_reg, const uint16_t* values
         if (!validate_register_value(reg, values[i])) { return PROTOCOL_ERR_INVALID_VALUE; }
     }
 
-    if (REG_LOCK() != pdTRUE) { return PROTOCOL_ERR_BUSY; }
+    if (REG_LOCK() != true) { return PROTOCOL_ERR_BUSY; }
 
     for (uint8_t i = 0; i < count; i++) {
         RegisterID reg   = (RegisterID)(start_reg + i);
@@ -527,7 +522,7 @@ uint16_t register_read(RegisterID reg) {
 
     uint16_t value;
 
-    if (REG_LOCK() != pdTRUE) { return 0xFFFF; }
+    if (REG_LOCK() != true) { return 0xFFFF; }
 
     if (g_read_callback != NULL) {
         value = g_read_callback(reg);
@@ -547,7 +542,7 @@ ProtocolResult register_batch_read(RegisterID start_reg, uint16_t* values, uint8
         return PROTOCOL_ERR_INVALID_REG;
     }
 
-    if (REG_LOCK() != pdTRUE) { return PROTOCOL_ERR_BUSY; }
+    if (REG_LOCK() != true) { return PROTOCOL_ERR_BUSY; }
 
     for (uint8_t i = 0; i < count; i++) {
         RegisterID reg = (RegisterID)(start_reg + i);
@@ -593,7 +588,7 @@ void protocol_upload_heating_status(void) {
     response[1] = MODBUS_FUNC_READ_HOLDING;
     response[2] = HEATING_REG_COUNT * 2;  // N个寄存器 × 2字节
 
-    if (REG_LOCK() != pdTRUE) { return; }
+    if (REG_LOCK() != true) { return; }
 
     for (uint8_t i = 0; i < HEATING_REG_COUNT; i++) {
         RegisterID reg = REG_HEATING_STATUS + i;
