@@ -28,34 +28,34 @@ BSP_HANDLE_DECLARE(led);
 
 /** LED 工作模式 */
 typedef enum {
-    BSP_LED_MODE_OFF   = 0,  /**< 常灭 */
-    BSP_LED_MODE_ON    = 1,  /**< 常亮 */
-    BSP_LED_MODE_BLINK = 2,  /**< 闪烁 */
+    BSP_LED_MODE_OFF = 0,   /**< 常灭 */
+    BSP_LED_MODE_ON = 1,    /**< 常亮 */
+    BSP_LED_MODE_BLINK = 2, /**< 闪烁 */
 } bsp_led_mode_t;
 
 /** 单个 LED 硬件配置 */
 typedef struct {
-    GPIO_TypeDef* port;          /**< GPIO 端口 */
-    uint16_t      pin;           /**< GPIO 引脚 */
-    GPIO_PinState active_level;  /**< 有效点亮电平 */
+    GPIO_TypeDef* port;         /**< GPIO 端口 */
+    uint16_t pin;               /**< GPIO 引脚 */
+    GPIO_PinState active_level; /**< 有效点亮电平 */
 } bsp_led_hw_t;
 
 /** LED 索引枚举（应用层使用，与硬件配置表顺序对应） */
 typedef enum {
-    BSP_LED_MUSIC  = 0,
-    BSP_LED_BT     = 1,
-    BSP_LED_10MIN  = 2,
-    BSP_LED_30MIN  = 3,
-    BSP_LED_60MIN  = 4,
-    BSP_LED_RF     = 5,
-    BSP_LED_B      = 6,
-    BSP_LED_COUNT  = 7
+    BSP_LED_MUSIC = 0,
+    BSP_LED_BT = 1,
+    BSP_LED_10MIN = 2,
+    BSP_LED_30MIN = 3,
+    BSP_LED_60MIN = 4,
+    BSP_LED_RF = 5,
+    BSP_LED_B = 6,
+    BSP_LED_COUNT = 7
 } bsp_led_index_t;
 
 /** LED 模块配置（所有 LED 的硬件表 + 数量） */
 typedef struct {
     const bsp_led_hw_t* hw_table; /**< LED 硬件配置表 */
-    uint8_t             count;    /**< LED 数量 */
+    uint8_t count;                /**< LED 数量 */
 } bsp_led_config_t;
 
 /*==============================================================================

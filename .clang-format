@@ -1,157 +1,118 @@
 # ==============================================================
-# .clang-format — 华为嵌入式 C/C++ 编码规范
+# .clang-format — LUNAR BSP 代码风格 (K&R + 嵌入式 C)
 # 基于 clang-format 12+
 # ==============================================================
 
 Language: Cpp
 Standard: c++11
 
-# ---- 基础样式 ----
-BasedOnStyle: InheritParentConfig
+# ---- 基础风格 (LLVM 为底) ----
+BasedOnStyle: LLVM
 
 # ==============================================================
-# 1. 缩进 (4空格，禁用Tab)
+# 1. 缩进 (4空格, 禁用Tab)
 # ==============================================================
-AccessModifierOffset: 0
-AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-AlignEscapedNewlines: Left
-AlignOperands: true
-AlignTrailingComments: true
-AllowAllArgumentsOnNextLine: true
-AllowAllConstructorInitializersOnNextLine: true
-AllowAllParametersOfDeclarationOnNextLine: true
-AllowShortBlocksOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLambdasOnASingleLine: Empty
-AllowShortLoopsOnASingleLine: false
-AlwaysBreakAfterReturnType: None
-AlwaysBreakBeforeMultilineStrings: false
-BinPackArguments: true
-BinPackParameters: true
-
-# 缩进宽度 & 使用空格
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
-
-# 预处理宏不缩进 (嵌入式常用)
 IndentPPDirectives: None
+IndentCaseLabels: false
+IndentCaseBlocks: false
+IndentGotoLabels: false
+NamespaceIndentation: None
 
 # ==============================================================
-# 2. 大括号风格 (函数左大括号换行)
+# 2. 大括号 — K&R (函数也不换行)
 # ==============================================================
-# 函数定义:
-# int func(void)
-# {
-# if/for/while: if (cond) {
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: false
-  AfterClass: false
-  AfterControlStatement: Never
-  AfterEnum: false
-  AfterFunction: true
-  AfterNamespace: false
-  AfterStruct: false
-  AfterUnion: false
+  AfterCaseLabel:  false
+  AfterClass:      false
+  AfterEnum:       false
+  AfterFunction:   false   # K&R: 函数大括号不换行
+  AfterNamespace:  false
+  AfterStruct:     false
+  AfterUnion:      false
   AfterExternBlock: false
-  BeforeCatch: false
-  BeforeElse: false
+  BeforeCatch:     false
+  BeforeElse:      false
   BeforeLambdaBody: false
-  BeforeWhile: false
-  IndentBraces: false
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
+  BeforeWhile:     false
+  IndentBraces:    false
 
 # ==============================================================
-# 3. 每行字符数
+# 3. 短语句 — 允许简洁单行
+# ==============================================================
+AllowShortBlocksOnASingleLine: true    # if (x) { return; }
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline  # 仅 inline 函数可单行
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true     # for (;;) { single; }
+AllowShortEnumsOnASingleLine: true
+AllowShortLambdasOnASingleLine: All
+
+# ==============================================================
+# 4. 每行字符数
 # ==============================================================
 ColumnLimit: 120
 
 # ==============================================================
-# 4. 空格规则
+# 5. 空格规则
 # ==============================================================
-# 赋值运算符前后空格
-SpaceBeforeAssignmentOperators: true
-# 指针/引用靠左: int *p, int &ref
-PointerAlignment: Left
+PointerAlignment: Left           # Type* ptr
 ReferenceAlignment: Left
-# 控制语句关键字后加空格: if ( ... ), for ( ... )
-SpaceBeforeParens: ControlStatements
+SpaceBeforeParens: ControlStatements  # if ( ... )
 SpaceInEmptyParentheses: false
-# 模板关键字后加空格
-SpaceAfterTemplateKeyword: true
 SpaceAfterCStyleCast: false
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceInEmptyBlock: false
-# 方括号/尖括号内不加空格
 SpacesInAngles: false
 SpacesInCStyleCastParentheses: false
 SpacesInConditionalStatement: false
 SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-# 尾随注释前留 2 空格
-SpacesBeforeTrailingComments: 2
+SpacesBeforeTrailingComments: 2   # 尾注释前 2 空格
 
 # ==============================================================
-# 5. 换行 & 续行对齐
+# 6. 对齐
 # ==============================================================
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# ==============================================================
+# 7. 换行
+# ==============================================================
+AlwaysBreakBeforeMultilineStrings: false
+BinPackArguments: true
+BinPackParameters: true
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: false
-BreakConstructorInitializers: BeforeColon
-BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
+ContinuationIndentWidth: 4
+
+# ==============================================================
+# 8. 注释 & include
+# ==============================================================
+ReflowComments: false
+SortIncludes: false           # 嵌入式项目 include 顺序人工控制
+IncludeBlocks: Preserve
+FixNamespaceComments: true
+
+# ==============================================================
+# 9. 其他
+# ==============================================================
+MaxEmptyLinesToKeep: 2
+AlignConsecutiveMacros: false      # 不破坏寄存器定义格式
+AlignConsecutiveBitFields: false
+DerivePointerAlignment: false
+Cpp11BracedListStyle: true
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 4
-ContinuationIndentWidth: 4
-Cpp11BracedListStyle: true
-DerivePointerAlignment: false
-FixNamespaceComments: true
-IncludeBlocks: Preserve
-IndentCaseBlocks: false
-IndentCaseLabels: true
-IndentGotoLabels: false
-IndentWrappedFunctionNames: false
-# 命名空间不缩进
-NamespaceIndentation: None
 
-# ==============================================================
-# 6. 注释
-# ==============================================================
-CommentPragmas: '^ IWYU pragma:'
-ReflowComments: false
-SpacesInLineCommentPrefix:
-  Minimum: 1
-  Maximum: 1
-
-# ==============================================================
-# 7. 其他规则
-# ==============================================================
-# include 不自动排序（嵌入式项目 include 顺序由人工控制）
-SortIncludes: false
-SortUsingDeclarations: false
-# 保留最多 2 行空行
-MaxEmptyLinesToKeep: 2
-# 短枚举不合并到一行
-AllowShortEnumsOnASingleLine: false
-
-# ==============================================================
-# 8. 嵌入式 C 特有设置
-# ==============================================================
-# 关闭宏对齐 (避免破坏寄存器/外设定义格式)
-AlignConsecutiveMacros: false
-# 关闭位域对齐
-AlignConsecutiveBitFields: false
-
-# 语句宏列表 (Qt 兼容)
+# Qt / 嵌入式语句宏
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION

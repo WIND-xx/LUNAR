@@ -30,23 +30,22 @@ static const bsp_key_row_t key_rows[] = {
 };
 
 static const bsp_key_power_pin_t power_pin = {
-    .port      = POWER_DC_GPIO_Port,
-    .pin       = POWER_DC_Pin,
+    .port = POWER_DC_GPIO_Port,
+    .pin = POWER_DC_Pin,
     .key_value = 18, /* KEY_POWER */
 };
 
 /*============================================================================
  * 扫描状态
  *============================================================================*/
-static uint8_t  s_key_before  = 0;
-static uint8_t  s_key_state   = 0;
+static uint8_t s_key_before = 0;
+static uint8_t s_key_state = 0;
 static uint16_t s_key_counter = 0;
 
 /*============================================================================
  * 按键扫描任务（20ms 周期）
  *============================================================================*/
-static void key_scan_task(void* arg)
-{
+static void key_scan_task(void* arg) {
     (void)arg;
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
@@ -62,7 +61,7 @@ static void key_scan_task(void* arg)
         if (s_key_before == 0 && now != 0) {
             /* 按键刚按下 */
             s_key_counter = 0;
-            s_key_state   = 0;
+            s_key_state = 0;
         } else if (s_key_before != 0 && now == 0) {
             /* 按键释放 */
             if (s_key_state == 0) {
@@ -90,13 +89,12 @@ static void key_scan_task(void* arg)
 /*============================================================================
  * 初始化
  *============================================================================*/
-void key_service_init(void)
-{
+void key_service_init(void) {
     bsp_key_config_t cfg = {
-        .rows      = key_rows,
+        .rows = key_rows,
         .row_count = BSP_ARRAY_SIZE(key_rows),
         .power_pin = &power_pin,
-        .row_port  = GPIOB,
+        .row_port = GPIOB,
     };
     bsp_key_init(&s_key_handle, &cfg);
 

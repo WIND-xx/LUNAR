@@ -24,9 +24,9 @@ extern "C" {
  * 编译期配置
  *============================================================================*/
 
-#define BT401_DMA_BUF_SIZE   128  /**< DMA 缓冲区大小 */
-#define BT401_DMA_BUF_COUNT  3    /**< DMA 缓冲池数量（3 平衡 RAM 和吞吐） */
-#define BT401_FRAME_QUEUE_SIZE 4  /**< 帧队列容量 */
+#define BT401_DMA_BUF_SIZE 128   /**< DMA 缓冲区大小 */
+#define BT401_DMA_BUF_COUNT 3    /**< DMA 缓冲池数量（3 平衡 RAM 和吞吐） */
+#define BT401_FRAME_QUEUE_SIZE 4 /**< 帧队列容量 */
 
 /*==============================================================================
  * 类型定义
@@ -37,8 +37,8 @@ BSP_HANDLE_DECLARE(bt401);
 
 /** 一帧数据 */
 typedef struct {
-    uint8_t  data[BT401_DMA_BUF_SIZE]; /**< 帧数据 */
-    uint16_t len;                      /**< 实际长度 */
+    uint8_t data[BT401_DMA_BUF_SIZE]; /**< 帧数据 */
+    uint16_t len;                     /**< 实际长度 */
 } bsp_bt401_frame_t;
 
 /** BT401 配置 */

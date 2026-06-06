@@ -27,9 +27,9 @@ BSP_HANDLE_DECLARE(buzzer);
 
 /** 蜂鸣器硬件配置 */
 typedef struct {
-    GPIO_TypeDef* port;          /**< GPIO 端口 */
-    uint16_t      pin;           /**< GPIO 引脚 */
-    GPIO_PinState active_level;  /**< 有效电平（高/低） */
+    GPIO_TypeDef* port;         /**< GPIO 端口 */
+    uint16_t pin;               /**< GPIO 引脚 */
+    GPIO_PinState active_level; /**< 有效电平（高/低） */
 } bsp_buzzer_config_t;
 
 /*==============================================================================

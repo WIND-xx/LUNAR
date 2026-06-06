@@ -28,14 +28,12 @@ typedef struct {
 static frame_stats_t s_stats;
 static ble_frame_cb_t s_frame_cb = NULL;
 
-void ble_service_set_frame_handler(ble_frame_cb_t cb)
-{
+void ble_service_set_frame_handler(ble_frame_cb_t cb) {
     s_frame_cb = cb;
 }
 
 /* ---- BLE帧处理任务 ---- */
-static void ble_task(void* arg)
-{
+static void ble_task(void* arg) {
     (void)arg;
     bsp_bt401_frame_t f = {0};
 
@@ -59,15 +57,12 @@ static void ble_task(void* arg)
             else
                 s_stats.unknown++;
 
-            if (s_frame_cb && (is_modbus || is_at)) {
-                s_frame_cb(f.data, f.len, is_modbus);
-            }
+            if (s_frame_cb && (is_modbus || is_at)) { s_frame_cb(f.data, f.len, is_modbus); }
             f.len = 0;
         }
 
         if ((s_stats.total % 60000) == 59999) {
-            LOG_PRINTF("BLE: F=%lu M=%lu A=%lu U=%lu Stack=%lu\r\n",
-                       s_stats.total, s_stats.modbus, s_stats.at,
+            LOG_PRINTF("BLE: F=%lu M=%lu A=%lu U=%lu Stack=%lu\r\n", s_stats.total, s_stats.modbus, s_stats.at,
                        s_stats.unknown, uxTaskGetStackHighWaterMark(NULL));
         }
 
@@ -76,8 +71,7 @@ static void ble_task(void* arg)
 }
 
 /* ---- AT命令接口 ---- */
-void bt_start(void)
-{
+void bt_start(void) {
     bsp_bt401_printf(g_bt401, "AT+BD%s\r\n", AT_BT_NAME);
     vTaskDelay(pdMS_TO_TICKS(100));
     bsp_bt401_printf(g_bt401, "AT+BM%s\r\n", AT_BLE_NAME);
@@ -96,56 +90,53 @@ void bt_start(void)
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
-void music_switch(void)  { bsp_bt401_printf(g_bt401, "AT+CB\r\n"); }
-void music_next(void)    { bsp_bt401_printf(g_bt401, "AT+CC\r\n"); }
-void music_prev(void)    { bsp_bt401_printf(g_bt401, "AT+CD\r\n"); }
-
-void music_volume_control(volume_dir_t dir)
-{
-    if (dir == VOL_DIR_UP)
-        bsp_bt401_printf(g_bt401, "AT+CE\r\n");
-    if (dir == VOL_DIR_DOWN)
-        bsp_bt401_printf(g_bt401, "AT+CF\r\n");
+void music_switch(void) {
+    bsp_bt401_printf(g_bt401, "AT+CB\r\n");
+}
+void music_next(void) {
+    bsp_bt401_printf(g_bt401, "AT+CC\r\n");
+}
+void music_prev(void) {
+    bsp_bt401_printf(g_bt401, "AT+CD\r\n");
 }
 
-void music_volume_set(uint8_t vol)
-{
-    if (vol <= 30)
-        bsp_bt401_printf(g_bt401, "AT+CA%02d\r\n", vol);
+void music_volume_control(volume_dir_t dir) {
+    if (dir == VOL_DIR_UP) bsp_bt401_printf(g_bt401, "AT+CE\r\n");
+    if (dir == VOL_DIR_DOWN) bsp_bt401_printf(g_bt401, "AT+CF\r\n");
 }
 
-void ble_mode(bt_mode_t mode)
-{
+void music_volume_set(uint8_t vol) {
+    if (vol <= 30) bsp_bt401_printf(g_bt401, "AT+CA%02d\r\n", vol);
+}
+
+void ble_mode(bt_mode_t mode) {
     const char* c = NULL;
     switch (mode) {
-        case BT_MODE_OFF:
-            c = "AT+CM08\r\n";
-            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_OFF, 0);
-            bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_OFF, 0);
-            break;
-        case BT_MODE_BT:
-            c = "AT+CM01\r\n";
-            bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_ON, 0);
-            break;
-        case BT_MODE_MUSIC:
-            c = "AT+CM04\r\n";
-            bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_ON, 0);
-            break;
-        default:
-            return;
+    case BT_MODE_OFF:
+        c = "AT+CM08\r\n";
+        bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_OFF, 0);
+        bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_OFF, 0);
+        break;
+    case BT_MODE_BT:
+        c = "AT+CM01\r\n";
+        bsp_led_set_mode(g_led, BSP_LED_BT, BSP_LED_MODE_ON, 0);
+        break;
+    case BT_MODE_MUSIC:
+        c = "AT+CM04\r\n";
+        bsp_led_set_mode(g_led, BSP_LED_MUSIC, BSP_LED_MODE_ON, 0);
+        break;
+    default: return;
     }
     bsp_bt401_printf(g_bt401, c);
 }
 
-void ble_query(void)
-{
+void ble_query(void) {
     bsp_bt401_printf(g_bt401, "AT+QM?\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
     bsp_bt401_printf(g_bt401, "AT+TS\r\n");
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
-void ble_service_init(void)
-{
+void ble_service_init(void) {
     xTaskCreate(ble_task, TASK_BLE_NAME, TASK_BLE_STACK, NULL, TASK_BLE_PRIORITY, NULL);
 }

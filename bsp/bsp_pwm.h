@@ -27,10 +27,10 @@ typedef uint32_t bsp_pwm_channel_t;
 
 /** PWM 初始化配置 */
 typedef struct {
-    TIM_HandleTypeDef* htim;      /**< HAL 定时器句柄（必须已在 CubeMX 中配置） */
-    bsp_pwm_channel_t  channel;   /**< TIM 通道（如 TIM_CHANNEL_1） */
-    uint32_t           freq_hz;   /**< PWM 频率 (Hz) */
-    uint32_t           resolution; /**< 占空比分辨率（如 1000 表示 0~999） */
+    TIM_HandleTypeDef* htim;   /**< HAL 定时器句柄（必须已在 CubeMX 中配置） */
+    bsp_pwm_channel_t channel; /**< TIM 通道（如 TIM_CHANNEL_1） */
+    uint32_t freq_hz;          /**< PWM 频率 (Hz) */
+    uint32_t resolution;       /**< 占空比分辨率（如 1000 表示 0~999） */
 } bsp_pwm_config_t;
 
 /*==============================================================================

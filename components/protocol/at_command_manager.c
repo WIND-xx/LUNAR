@@ -16,8 +16,7 @@
  *============================================================================*/
 
 /* 从池中分配一个请求槽 */
-static at_request_t* pool_alloc(at_command_manager_t* mgr)
-{
+static at_request_t* pool_alloc(at_command_manager_t* mgr) {
     for (uint8_t i = 0; i < AT_PENDING_MAX; i++) {
         if (!mgr->request_pool[i].in_use) {
             mgr->request_pool[i].in_use = true;
@@ -28,21 +27,16 @@ static at_request_t* pool_alloc(at_command_manager_t* mgr)
 }
 
 /* 释放请求槽 */
-static void pool_free(at_request_t* req)
-{
-    if (req)
-        req->in_use = false;
+static void pool_free(at_request_t* req) {
+    if (req) req->in_use = false;
 }
 
 /* 检查响应是否成功 */
-static bool check_success(const uint8_t* data, uint16_t len)
-{
+static bool check_success(const uint8_t* data, uint16_t len) {
     /* 查找 "+00" 或 "OK" 成功标记 */
     for (uint16_t i = 0; i + 2 < len; i++) {
-        if (data[i] == '+' && data[i + 1] == '0' && data[i + 2] == '0')
-            return true;
-        if (i + 1 < len && data[i] == 'O' && data[i + 1] == 'K')
-            return true;
+        if (data[i] == '+' && data[i + 1] == '0' && data[i + 2] == '0') return true;
+        if (i + 1 < len && data[i] == 'O' && data[i + 1] == 'K') return true;
     }
     return false;
 }
@@ -51,10 +45,8 @@ static bool check_success(const uint8_t* data, uint16_t len)
  * 公共 API
  *============================================================================*/
 
-bool at_manager_init(at_command_manager_t* mgr)
-{
-    if (!mgr)
-        return false;
+bool at_manager_init(at_command_manager_t* mgr) {
+    if (!mgr) return false;
 
     memset(mgr, 0, sizeof(*mgr));
 
@@ -66,13 +58,10 @@ bool at_manager_init(at_command_manager_t* mgr)
 }
 
 bool at_register_command(at_command_manager_t* mgr, at_cmd_type_t type, const char* prefix, at_cmd_handler_t handler,
-                         void* user_data, bool wait_resp)
-{
-    if (!mgr || mgr->reg_count >= AT_CMD_MAX)
-        return false;
+                         void* user_data, bool wait_resp) {
+    if (!mgr || mgr->reg_count >= AT_CMD_MAX) return false;
 
-    if (xSemaphoreTake(mgr->mutex, pdMS_TO_TICKS(100)) != pdPASS)
-        return false;
+    if (xSemaphoreTake(mgr->mutex, pdMS_TO_TICKS(100)) != pdPASS) return false;
 
     mgr->registrations[mgr->reg_count].cmd_type = type;
     mgr->registrations[mgr->reg_count].cmd_prefix = prefix;
@@ -86,15 +75,12 @@ bool at_register_command(at_command_manager_t* mgr, at_cmd_type_t type, const ch
 }
 
 bool at_send_command_async(at_command_manager_t* mgr, at_cmd_type_t type, const uint8_t* data, uint16_t len,
-                           at_priority_t prio)
-{
-    if (!mgr || !data || len > AT_CMD_DATA_MAX)
-        return false;
+                           at_priority_t prio) {
+    if (!mgr || !data || len > AT_CMD_DATA_MAX) return false;
 
     /* 从静态池分配 */
     at_request_t* req = pool_alloc(mgr);
-    if (!req)
-        return false;
+    if (!req) return false;
 
     req->cmd_type = type;
     req->request_id = ++mgr->request_id_counter;
@@ -111,35 +97,27 @@ bool at_send_command_async(at_command_manager_t* mgr, at_cmd_type_t type, const 
     }
 
     /* 发送请求指针到队列 */
-    if (xQueueSend(mgr->request_queue, &req, 0) == pdPASS) {
-        return true;
-    }
+    if (xQueueSend(mgr->request_queue, &req, 0) == pdPASS) { return true; }
 
     pool_free(req);
     return false;
 }
 
 bool at_send_command_sync(at_command_manager_t* mgr, at_cmd_type_t type, const uint8_t* data, uint16_t len,
-                          at_response_t* resp, uint32_t timeout_ms)
-{
-    if (!at_send_command_async(mgr, type, data, len, AT_PRIORITY_NORMAL))
-        return false;
+                          at_response_t* resp, uint32_t timeout_ms) {
+    if (!at_send_command_async(mgr, type, data, len, AT_PRIORITY_NORMAL)) return false;
 
     TickType_t start = xTaskGetTickCount();
     TickType_t timeout = pdMS_TO_TICKS(timeout_ms);
 
     while ((xTaskGetTickCount() - start) < timeout) {
-        if (xQueueReceive(mgr->response_queue, resp, pdMS_TO_TICKS(50)) == pdPASS) {
-            return true;
-        }
+        if (xQueueReceive(mgr->response_queue, resp, pdMS_TO_TICKS(50)) == pdPASS) { return true; }
     }
     return false;
 }
 
-void at_process_frame(at_command_manager_t* mgr, const uint8_t* data, uint16_t len)
-{
-    if (!mgr || len < 2)
-        return;
+void at_process_frame(at_command_manager_t* mgr, const uint8_t* data, uint16_t len) {
+    if (!mgr || len < 2) return;
 
     at_response_t resp;
     memset(&resp, 0, sizeof(resp));
@@ -168,24 +146,19 @@ void at_process_frame(at_command_manager_t* mgr, const uint8_t* data, uint16_t l
 
     /* 调用注册的回调 */
     for (uint8_t i = 0; i < mgr->reg_count; i++) {
-        if (mgr->registrations[i].handler) {
-            mgr->registrations[i].handler(&resp, mgr->registrations[i].user_data);
-        }
+        if (mgr->registrations[i].handler) { mgr->registrations[i].handler(&resp, mgr->registrations[i].user_data); }
     }
 
     xQueueSend(mgr->response_queue, &resp, 0);
 }
 
-void at_check_timeouts(at_command_manager_t* mgr)
-{
-    if (!mgr)
-        return;
+void at_check_timeouts(at_command_manager_t* mgr) {
+    if (!mgr) return;
     TickType_t now = xTaskGetTickCount();
 
     if (xSemaphoreTake(mgr->mutex, 0) == pdPASS) {
         for (uint8_t i = 0; i < AT_PENDING_MAX; i++) {
-            if (!mgr->request_pool[i].in_use)
-                continue;
+            if (!mgr->request_pool[i].in_use) continue;
 
             uint32_t elapsed = (now - mgr->request_pool[i].timestamp) * portTICK_PERIOD_MS;
             if (elapsed > mgr->request_pool[i].timeout_ms) {

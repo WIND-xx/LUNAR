@@ -24,17 +24,17 @@ BSP_HANDLE_DECLARE(heat);
 
 /** 加热模块配置 */
 typedef struct {
-    TIM_HandleTypeDef* htim;      /**< HAL 定时器句柄 */
-    uint32_t           channel;   /**< PWM 通道 */
-    uint32_t           freq_hz;   /**< PWM 频率 */
-    uint32_t           resolution; /**< 占空比分辨率 */
+    TIM_HandleTypeDef* htim; /**< HAL 定时器句柄 */
+    uint32_t channel;        /**< PWM 通道 */
+    uint32_t freq_hz;        /**< PWM 频率 */
+    uint32_t resolution;     /**< 占空比分辨率 */
 } bsp_heat_config_t;
 
 /*==============================================================================
  * API 函数
  *============================================================================*/
 
-#define BSP_HEAT_MAX_POWER  100U  /**< 最大功率百分比 */
+#define BSP_HEAT_MAX_POWER 100U /**< 最大功率百分比 */
 
 /**
  * @brief 初始化加热模块

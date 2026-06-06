@@ -23,11 +23,11 @@ extern "C" {
  * 编译期配置
  *============================================================================*/
 
-#define NTC_USE_DMA         1   /**< 启用 DMA 采样 */
-#define USE_DOUBLE_BUFFER   1   /**< 启用 DMA 双缓冲 */
-#define NTC_FILTER_SAMPLES  5   /**< 中值滤波样本数（奇数） */
-#define NTC_MOVING_AVG_LEN  8   /**< 滑动平均长度（2 的幂） */
-#define NTC_LOW_PASS_ALPHA  0.3f /**< 低通滤波系数 */
+#define NTC_USE_DMA 1           /**< 启用 DMA 采样 */
+#define USE_DOUBLE_BUFFER 1     /**< 启用 DMA 双缓冲 */
+#define NTC_FILTER_SAMPLES 5    /**< 中值滤波样本数（奇数） */
+#define NTC_MOVING_AVG_LEN 8    /**< 滑动平均长度（2 的幂） */
+#define NTC_LOW_PASS_ALPHA 0.3f /**< 低通滤波系数 */
 
 /*==============================================================================
  * 类型定义
@@ -38,8 +38,8 @@ BSP_HANDLE_DECLARE(ntc);
 
 /** NTC 配置 */
 typedef struct {
-    ADC_HandleTypeDef* hadc;       /**< HAL ADC 句柄 */
-    float              temp_offset; /**< 温度补偿偏移量（℃） */
+    ADC_HandleTypeDef* hadc; /**< HAL ADC 句柄 */
+    float temp_offset;       /**< 温度补偿偏移量（℃） */
 } bsp_ntc_config_t;
 
 /*==============================================================================

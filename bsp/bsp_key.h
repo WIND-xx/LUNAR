@@ -24,24 +24,24 @@ BSP_HANDLE_DECLARE(key);
 
 /** 行配置：驱动引脚 + 列引脚列表 + 对应键值 */
 typedef struct {
-    uint16_t output_pin;     /**< 行驱动输出引脚 */
-    uint16_t input_pins[5];  /**< 列输入引脚列表（0=无效） */
-    uint8_t  key_values[5];  /**< 对应按键返回值（0=无效） */
+    uint16_t output_pin;    /**< 行驱动输出引脚 */
+    uint16_t input_pins[5]; /**< 列输入引脚列表（0=无效） */
+    uint8_t key_values[5];  /**< 对应按键返回值（0=无效） */
 } bsp_key_row_t;
 
 /** 外部电源检测引脚配置（可选） */
 typedef struct {
-    GPIO_TypeDef* port;      /**< 电源检测端口 */
-    uint16_t      pin;       /**< 电源检测引脚 */
-    uint8_t       key_value; /**< 电源键返回值 */
+    GPIO_TypeDef* port; /**< 电源检测端口 */
+    uint16_t pin;       /**< 电源检测引脚 */
+    uint8_t key_value;  /**< 电源键返回值 */
 } bsp_key_power_pin_t;
 
 /** 键盘配置 */
 typedef struct {
-    const bsp_key_row_t*       rows;        /**< 行配置表 */
-    uint8_t                    row_count;   /**< 行数 */
-    const bsp_key_power_pin_t* power_pin;   /**< 电源检测引脚（NULL=无） */
-    GPIO_TypeDef*              row_port;    /**< 行引脚所在 GPIO 端口（通常 GPIOB） */
+    const bsp_key_row_t* rows;            /**< 行配置表 */
+    uint8_t row_count;                    /**< 行数 */
+    const bsp_key_power_pin_t* power_pin; /**< 电源检测引脚（NULL=无） */
+    GPIO_TypeDef* row_port;               /**< 行引脚所在 GPIO 端口（通常 GPIOB） */
 } bsp_key_config_t;
 
 /*==============================================================================

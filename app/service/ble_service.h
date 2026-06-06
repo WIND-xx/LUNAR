@@ -22,15 +22,8 @@
 extern "C" {
 #endif
 
-typedef enum {
-    VOL_DIR_UP,
-    VOL_DIR_DOWN
-} volume_dir_t;
-typedef enum {
-    BT_MODE_OFF,
-    BT_MODE_BT,
-    BT_MODE_MUSIC
-} bt_mode_t;
+typedef enum { VOL_DIR_UP, VOL_DIR_DOWN } volume_dir_t;
+typedef enum { BT_MODE_OFF, BT_MODE_BT, BT_MODE_MUSIC } bt_mode_t;
 
 /* 帧处理回调：上层注册以解耦协议层 */
 typedef void (*ble_frame_cb_t)(const uint8_t* data, uint16_t len, bool is_modbus);
