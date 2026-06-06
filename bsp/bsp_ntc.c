@@ -88,9 +88,9 @@ static uint32_t ntc_median(uint32_t buf[], uint8_t n) {
         for (uint8_t j = 0; j < n - i - 1; j++) {
             if (tmp[j] > tmp[j + 1]) {
                 uint32_t t = tmp[j];
-                tmp[j] = tmp[j + 1];
+                tmp[j]     = tmp[j + 1];
                 tmp[j + 1] = t;
-                swapped = true;
+                swapped    = true;
             }
         }
         if (!swapped) break;
@@ -106,7 +106,7 @@ static uint32_t ntc_moving_avg(uint32_t new_val) {
     s_inst.moving_sum -= s_inst.adc_moving_buf[s_inst.moving_idx];
     s_inst.moving_sum += new_val;
     s_inst.adc_moving_buf[s_inst.moving_idx] = new_val;
-    s_inst.moving_idx = (s_inst.moving_idx + 1) & (NTC_MOVING_AVG_LEN - 1);
+    s_inst.moving_idx                        = (s_inst.moving_idx + 1) & (NTC_MOVING_AVG_LEN - 1);
 #if NTC_MOVING_AVG_LEN == 8
     return s_inst.moving_sum >> 3;
 #elif NTC_MOVING_AVG_LEN == 4
@@ -168,7 +168,7 @@ static bool ntc_detect_fault(uint32_t adc_val) {
         }
     } else {
         s_inst.stuck_counter = 0;
-        s_inst.last_raw_adc = adc_val;
+        s_inst.last_raw_adc  = adc_val;
     }
     s_inst.fault_active = false;
     return false;
@@ -240,15 +240,15 @@ bsp_status_t bsp_ntc_init(bsp_ntc_t** handle, const bsp_ntc_config_t* config) {
     if (!handle || !config || !config->hadc) return BSP_ERR_PARAM;
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
-    s_inst.hadc = config->hadc;
+    s_inst.hadc        = config->hadc;
     s_inst.temp_offset = config->temp_offset;
     for (uint8_t i = 0; i < NTC_MOVING_AVG_LEN; i++) s_inst.adc_moving_buf[i] = ADC_MAX_VALUE / 2;
-    s_inst.moving_sum = (ADC_MAX_VALUE / 2) * NTC_MOVING_AVG_LEN;
-    s_inst.moving_idx = 0;
+    s_inst.moving_sum         = (ADC_MAX_VALUE / 2) * NTC_MOVING_AVG_LEN;
+    s_inst.moving_idx         = 0;
     s_inst.last_filtered_temp = 25.0f;
-    s_inst.is_first_sample = true;
-    s_inst.fault_active = false;
-    s_inst.stuck_counter = 0;
+    s_inst.is_first_sample    = true;
+    s_inst.fault_active       = false;
+    s_inst.stuck_counter      = 0;
 
 #if NTC_USE_DMA
 #if USE_DOUBLE_BUFFER
@@ -256,7 +256,7 @@ bsp_status_t bsp_ntc_init(bsp_ntc_t** handle, const bsp_ntc_config_t* config) {
         for (uint8_t j = 0; j < ADC_DMA_BUF_SIZE; j++) s_inst.dma_buf[i][j] = ADC_MAX_VALUE / 2;
     s_inst.active_buf = 0;
     s_inst.data_ready = 0;
-    g_ntc_instance = &s_inst;
+    g_ntc_instance    = &s_inst;
     HAL_ADC_Start_DMA(s_inst.hadc, (uint32_t*)s_inst.dma_buf[0], ADC_DMA_BUF_SIZE);
 #else
     for (uint8_t i = 0; i < ADC_DMA_BUF_SIZE; i++) s_inst.dma_buf[i] = ADC_MAX_VALUE / 2;
@@ -265,8 +265,8 @@ bsp_status_t bsp_ntc_init(bsp_ntc_t** handle, const bsp_ntc_config_t* config) {
 #endif
 
     s_inst.initialized = true;
-    s_inited = true;
-    *handle = (bsp_ntc_t*)&s_inst;
+    s_inited           = true;
+    *handle            = (bsp_ntc_t*)&s_inst;
     return BSP_OK;
 }
 
@@ -279,8 +279,8 @@ void bsp_ntc_deinit(bsp_ntc_t** handle) {
 #endif
 #endif
     s_inst.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited           = false;
+    *handle            = NULL;
 }
 
 bsp_status_t bsp_ntc_read(bsp_ntc_t* handle, float* temp_c) {
@@ -305,7 +305,7 @@ bsp_status_t bsp_ntc_read(bsp_ntc_t* handle, float* temp_c) {
         s_inst.is_first_sample = false;
         filtered = s_inst.last_filtered_temp = raw;
     } else {
-        filtered = ntc_low_pass(raw, s_inst.last_filtered_temp);
+        filtered                  = ntc_low_pass(raw, s_inst.last_filtered_temp);
         s_inst.last_filtered_temp = filtered;
     }
 
@@ -329,7 +329,7 @@ bool bsp_ntc_is_fault(bsp_ntc_t* handle) {
 
 void bsp_ntc_clear_fault(bsp_ntc_t* handle) {
     if (!handle || !s_inited) return;
-    s_inst.fault_active = false;
+    s_inst.fault_active  = false;
     s_inst.stuck_counter = 0;
 }
 
@@ -340,8 +340,8 @@ void bsp_ntc_set_offset(bsp_ntc_t* handle, float offset) {
 void bsp_ntc_reset_filter(bsp_ntc_t* handle) {
     if (!handle || !s_inited) return;
     s_inst.last_filtered_temp = 25.0f;
-    s_inst.is_first_sample = true;
-    s_inst.moving_idx = 0;
+    s_inst.is_first_sample    = true;
+    s_inst.moving_idx         = 0;
     for (uint8_t i = 0; i < NTC_MOVING_AVG_LEN; i++) s_inst.adc_moving_buf[i] = ADC_MAX_VALUE / 2;
     s_inst.moving_sum = (ADC_MAX_VALUE / 2) * NTC_MOVING_AVG_LEN;
 }

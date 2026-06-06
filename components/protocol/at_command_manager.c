@@ -50,9 +50,9 @@ bool at_manager_init(at_command_manager_t* mgr) {
 
     memset(mgr, 0, sizeof(*mgr));
 
-    mgr->request_queue = xQueueCreate(AT_PENDING_MAX, sizeof(at_request_t*));
+    mgr->request_queue  = xQueueCreate(AT_PENDING_MAX, sizeof(at_request_t*));
     mgr->response_queue = xQueueCreate(AT_PENDING_MAX, sizeof(at_response_t));
-    mgr->mutex = xSemaphoreCreateMutex();
+    mgr->mutex          = xSemaphoreCreateMutex();
 
     return (mgr->request_queue && mgr->response_queue && mgr->mutex);
 }
@@ -63,10 +63,10 @@ bool at_register_command(at_command_manager_t* mgr, at_cmd_type_t type, const ch
 
     if (xSemaphoreTake(mgr->mutex, pdMS_TO_TICKS(100)) != pdPASS) return false;
 
-    mgr->registrations[mgr->reg_count].cmd_type = type;
-    mgr->registrations[mgr->reg_count].cmd_prefix = prefix;
-    mgr->registrations[mgr->reg_count].handler = handler;
-    mgr->registrations[mgr->reg_count].user_data = user_data;
+    mgr->registrations[mgr->reg_count].cmd_type          = type;
+    mgr->registrations[mgr->reg_count].cmd_prefix        = prefix;
+    mgr->registrations[mgr->reg_count].handler           = handler;
+    mgr->registrations[mgr->reg_count].user_data         = user_data;
     mgr->registrations[mgr->reg_count].wait_for_response = wait_resp;
     mgr->reg_count++;
 
@@ -82,12 +82,12 @@ bool at_send_command_async(at_command_manager_t* mgr, at_cmd_type_t type, const 
     at_request_t* req = pool_alloc(mgr);
     if (!req) return false;
 
-    req->cmd_type = type;
+    req->cmd_type   = type;
     req->request_id = ++mgr->request_id_counter;
-    req->priority = prio;
+    req->priority   = prio;
     req->timeout_ms = AT_DEFAULT_TIMEOUT_MS;
-    req->timestamp = xTaskGetTickCount();
-    req->cmd_len = (len < AT_CMD_DATA_MAX) ? len : AT_CMD_DATA_MAX;
+    req->timestamp  = xTaskGetTickCount();
+    req->cmd_len    = (len < AT_CMD_DATA_MAX) ? len : AT_CMD_DATA_MAX;
     memcpy(req->cmd_data, data, req->cmd_len);
 
     if (xSemaphoreTake(mgr->mutex, pdMS_TO_TICKS(100)) == pdPASS) {
@@ -107,7 +107,7 @@ bool at_send_command_sync(at_command_manager_t* mgr, at_cmd_type_t type, const u
                           at_response_t* resp, uint32_t timeout_ms) {
     if (!at_send_command_async(mgr, type, data, len, AT_PRIORITY_NORMAL)) return false;
 
-    TickType_t start = xTaskGetTickCount();
+    TickType_t start   = xTaskGetTickCount();
     TickType_t timeout = pdMS_TO_TICKS(timeout_ms);
 
     while ((xTaskGetTickCount() - start) < timeout) {
@@ -121,9 +121,9 @@ void at_process_frame(at_command_manager_t* mgr, const uint8_t* data, uint16_t l
 
     at_response_t resp;
     memset(&resp, 0, sizeof(resp));
-    resp.timestamp = xTaskGetTickCount();
-    resp.is_success = check_success(data, len);
-    resp.status = AT_RESP_RECEIVED;
+    resp.timestamp    = xTaskGetTickCount();
+    resp.is_success   = check_success(data, len);
+    resp.status       = AT_RESP_RECEIVED;
     resp.response_len = (len < AT_RESP_DATA_MAX) ? len : AT_RESP_DATA_MAX;
     memcpy(resp.response_data, data, resp.response_len);
 
@@ -132,7 +132,7 @@ void at_process_frame(at_command_manager_t* mgr, const uint8_t* data, uint16_t l
         for (uint8_t i = 0; i < AT_PENDING_MAX; i++) {
             if (mgr->request_pool[i].in_use) {
                 /* 简化匹配：相同类型即匹配 */
-                resp.cmd_type = mgr->request_pool[i].cmd_type;
+                resp.cmd_type   = mgr->request_pool[i].cmd_type;
                 resp.request_id = mgr->request_pool[i].request_id;
 
                 pool_free(&mgr->request_pool[i]);
@@ -164,10 +164,10 @@ void at_check_timeouts(at_command_manager_t* mgr) {
             if (elapsed > mgr->request_pool[i].timeout_ms) {
                 /* 超时：通知回调 */
                 at_response_t resp = {0};
-                resp.cmd_type = mgr->request_pool[i].cmd_type;
-                resp.request_id = mgr->request_pool[i].request_id;
-                resp.status = AT_RESP_TIMEOUT;
-                resp.timestamp = now;
+                resp.cmd_type      = mgr->request_pool[i].cmd_type;
+                resp.request_id    = mgr->request_pool[i].request_id;
+                resp.status        = AT_RESP_TIMEOUT;
+                resp.timestamp     = now;
 
                 for (uint8_t j = 0; j < mgr->reg_count; j++) {
                     if (mgr->registrations[j].handler) {

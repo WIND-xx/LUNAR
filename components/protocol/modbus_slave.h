@@ -15,7 +15,7 @@ extern "C" {
 // 寄存器访问权限
 typedef enum {
     REG_ACCESS_WRITE_ONLY = 0x01,
-    REG_ACCESS_READ_ONLY = 0x02,
+    REG_ACCESS_READ_ONLY  = 0x02,
     REG_ACCESS_READ_WRITE = 0x03,
 } RegisterAccess;
 

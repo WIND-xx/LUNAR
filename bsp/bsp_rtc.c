@@ -43,7 +43,7 @@ bsp_status_t bsp_rtc_init(bsp_rtc_t** handle, const bsp_rtc_config_t* config) {
     if (!handle || !config || !config->hrtc) return BSP_ERR_PARAM;
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
-    s_inst.hrtc = config->hrtc;
+    s_inst.hrtc           = config->hrtc;
     s_inst.hrtc->Instance = RTC;
 
     __HAL_RCC_PWR_CLK_ENABLE();
@@ -80,16 +80,16 @@ bsp_status_t bsp_rtc_init(bsp_rtc_t** handle, const bsp_rtc_config_t* config) {
     }
 
     s_inst.initialized = true;
-    s_inited = true;
-    *handle = (bsp_rtc_t*)&s_inst;
+    s_inited           = true;
+    *handle            = (bsp_rtc_t*)&s_inst;
     return BSP_OK;
 }
 
 void bsp_rtc_deinit(bsp_rtc_t** handle) {
     if (!handle || !*handle || !s_inited) return;
     s_inst.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited           = false;
+    *handle            = NULL;
 }
 
 bsp_status_t bsp_rtc_set_datetime(bsp_rtc_t* handle, const bsp_rtc_datetime_t* dt) {
@@ -132,11 +132,11 @@ bsp_status_t bsp_rtc_set_utc(bsp_rtc_t* handle, uint32_t utc) {
 void bsp_rtc_utc_to_datetime(uint32_t utc, bsp_rtc_datetime_t* dt) {
     if (!dt) return;
     uint32_t sec = utc - UNIX_EPOCH_OFFSET;
-    dt->second = sec % 60;
+    dt->second   = sec % 60;
     sec /= 60;
     dt->minute = sec % 60;
     sec /= 60;
-    dt->hour = sec % 24;
+    dt->hour            = sec % 24;
     uint32_t total_days = sec / 24, days = total_days;
     for (dt->year = 0;; dt->year++) {
         uint32_t diy = rtc_is_leap(2000 + dt->year) ? 366 : 365;
@@ -148,7 +148,7 @@ void bsp_rtc_utc_to_datetime(uint32_t utc, bsp_rtc_datetime_t* dt) {
         if (days < dim) break;
         days -= dim;
     }
-    dt->day = days + 1;
+    dt->day     = days + 1;
     dt->weekday = (total_days + 6) % 7;
 }
 

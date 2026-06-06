@@ -9,8 +9,8 @@
  * @brief 加热状态枚举
  */
 typedef enum {
-    HEAT_STATUS_STOP = 0,    ///< 加热停止
-    HEAT_STATUS_RUNNING = 1  ///< 加热运行
+    HEAT_STATUS_STOP    = 0,  ///< 加热停止
+    HEAT_STATUS_RUNNING = 1   ///< 加热运行
 } HeatStatus;
 
 /**

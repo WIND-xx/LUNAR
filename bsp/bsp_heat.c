@@ -21,18 +21,18 @@ bsp_status_t bsp_heat_init(bsp_heat_t** handle, const bsp_heat_config_t* config)
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
     bsp_pwm_config_t pwm_cfg = {
-        .htim = config->htim,
-        .channel = config->channel,
-        .freq_hz = config->freq_hz,
+        .htim       = config->htim,
+        .channel    = config->channel,
+        .freq_hz    = config->freq_hz,
         .resolution = config->resolution,
     };
     bsp_status_t ret = bsp_pwm_init(&s_inst.pwm, &pwm_cfg);
     if (ret != BSP_OK) return ret;
 
     s_inst.current_power = 0;
-    s_inst.initialized = true;
-    s_inited = true;
-    *handle = (bsp_heat_t*)&s_inst;
+    s_inst.initialized   = true;
+    s_inited             = true;
+    *handle              = (bsp_heat_t*)&s_inst;
     return BSP_OK;
 }
 
@@ -42,8 +42,8 @@ void bsp_heat_deinit(bsp_heat_t** handle) {
     bsp_pwm_stop(s_inst.pwm);
     bsp_pwm_deinit(&s_inst.pwm);
     s_inst.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited           = false;
+    *handle            = NULL;
 }
 
 bsp_status_t bsp_heat_start(bsp_heat_t* handle) {
@@ -57,7 +57,7 @@ bsp_status_t bsp_heat_stop(bsp_heat_t* handle) {
 bsp_status_t bsp_heat_set_power(bsp_heat_t* handle, uint8_t power_percent) {
     if (!handle || !s_inited) return BSP_ERR_NOTINIT;
     uint8_t power = (power_percent > BSP_HEAT_MAX_POWER) ? BSP_HEAT_MAX_POWER : power_percent;
-    uint32_t res = bsp_pwm_get_resolution(s_inst.pwm);
+    uint32_t res  = bsp_pwm_get_resolution(s_inst.pwm);
     if (!res) return BSP_ERROR;
     uint32_t duty = ((uint32_t)power * res) / BSP_HEAT_MAX_POWER;
     if (duty >= res) duty = res - 1;

@@ -26,13 +26,13 @@ extern "C" {
  *============================================================================*/
 
 typedef enum {
-    BSP_OK = 0,           /**< 操作成功 */
-    BSP_ERROR = -1,       /**< 通用错误 */
-    BSP_ERR_PARAM = -2,   /**< 参数无效（NULL、越界等） */
-    BSP_ERR_BUSY = -3,    /**< 资源忙（重复初始化、DMA占用等） */
+    BSP_OK          = 0,  /**< 操作成功 */
+    BSP_ERROR       = -1, /**< 通用错误 */
+    BSP_ERR_PARAM   = -2, /**< 参数无效（NULL、越界等） */
+    BSP_ERR_BUSY    = -3, /**< 资源忙（重复初始化、DMA占用等） */
     BSP_ERR_TIMEOUT = -4, /**< 操作超时 */
-    BSP_ERR_HW = -5,      /**< 硬件错误（外设故障、传感器异常等） */
-    BSP_ERR_NOMEM = -6,   /**< 内存不足 */
+    BSP_ERR_HW      = -5, /**< 硬件错误（外设故障、传感器异常等） */
+    BSP_ERR_NOMEM   = -6, /**< 内存不足 */
     BSP_ERR_NOTINIT = -7, /**< 模块未初始化 */
 } bsp_status_t;
 

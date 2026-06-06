@@ -55,38 +55,38 @@ bsp_status_t bsp_pwm_init(bsp_pwm_t** handle, const bsp_pwm_config_t* config) {
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
     uint32_t tim_clk = pwm_get_timer_clk(config->htim->Instance);
-    uint32_t ticks = tim_clk / config->freq_hz;
+    uint32_t ticks   = tim_clk / config->freq_hz;
     if (ticks < config->resolution) return BSP_ERROR;
 
     uint32_t prescaler = (ticks / config->resolution) - 1;
-    uint32_t period = config->resolution - 1;
+    uint32_t period    = config->resolution - 1;
 
-    config->htim->Init.Prescaler = prescaler;
-    config->htim->Init.Period = period;
-    config->htim->Init.CounterMode = TIM_COUNTERMODE_UP;
-    config->htim->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    config->htim->Init.Prescaler         = prescaler;
+    config->htim->Init.Period            = period;
+    config->htim->Init.CounterMode       = TIM_COUNTERMODE_UP;
+    config->htim->Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     config->htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 
     if (HAL_TIM_PWM_Init(config->htim) != HAL_OK) return BSP_ERR_HW;
 
     TIM_OC_InitTypeDef oc = {0};
-    oc.OCMode = TIM_OCMODE_PWM1;
-    oc.Pulse = 0;
-    oc.OCPolarity = TIM_OCPOLARITY_HIGH;
-    oc.OCFastMode = TIM_OCFAST_DISABLE;
-    oc.OCIdleState = TIM_OCIDLESTATE_RESET;
-    oc.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+    oc.OCMode             = TIM_OCMODE_PWM1;
+    oc.Pulse              = 0;
+    oc.OCPolarity         = TIM_OCPOLARITY_HIGH;
+    oc.OCFastMode         = TIM_OCFAST_DISABLE;
+    oc.OCIdleState        = TIM_OCIDLESTATE_RESET;
+    oc.OCNIdleState       = TIM_OCNIDLESTATE_RESET;
 
     if (HAL_TIM_PWM_ConfigChannel(config->htim, &oc, config->channel) != HAL_OK) {
         HAL_TIM_PWM_DeInit(config->htim);
         return BSP_ERR_HW;
     }
 
-    s_instance.htim = config->htim;
-    s_instance.channel = config->channel;
-    s_instance.resolution = config->resolution;
+    s_instance.htim        = config->htim;
+    s_instance.channel     = config->channel;
+    s_instance.resolution  = config->resolution;
     s_instance.initialized = true;
-    s_inited = true;
+    s_inited               = true;
 
     *handle = (bsp_pwm_t*)&s_instance;
     return BSP_OK;
@@ -102,8 +102,8 @@ void bsp_pwm_deinit(bsp_pwm_t** handle) {
     }
 
     s_instance.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited               = false;
+    *handle                = NULL;
 }
 
 bsp_status_t bsp_pwm_set_duty(bsp_pwm_t* handle, uint32_t duty) {

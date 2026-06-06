@@ -28,8 +28,8 @@ BSP_HANDLE_DECLARE(led);
 
 /** LED 工作模式 */
 typedef enum {
-    BSP_LED_MODE_OFF = 0,   /**< 常灭 */
-    BSP_LED_MODE_ON = 1,    /**< 常亮 */
+    BSP_LED_MODE_OFF   = 0, /**< 常灭 */
+    BSP_LED_MODE_ON    = 1, /**< 常亮 */
     BSP_LED_MODE_BLINK = 2, /**< 闪烁 */
 } bsp_led_mode_t;
 
@@ -43,12 +43,12 @@ typedef struct {
 /** LED 索引枚举（应用层使用，与硬件配置表顺序对应） */
 typedef enum {
     BSP_LED_MUSIC = 0,
-    BSP_LED_BT = 1,
+    BSP_LED_BT    = 1,
     BSP_LED_10MIN = 2,
     BSP_LED_30MIN = 3,
     BSP_LED_60MIN = 4,
-    BSP_LED_RF = 5,
-    BSP_LED_B = 6,
+    BSP_LED_RF    = 5,
+    BSP_LED_B     = 6,
     BSP_LED_COUNT = 7
 } bsp_led_index_t;
 

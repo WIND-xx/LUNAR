@@ -33,13 +33,13 @@
 /*============================================================================
  * 全局 BSP 句柄定义
  *============================================================================*/
-bsp_bt401_t* g_bt401 = NULL;
+bsp_bt401_t* g_bt401   = NULL;
 bsp_buzzer_t* g_buzzer = NULL;
-bsp_heat_t* g_heat = NULL;
-bsp_key_t* g_key = NULL;
-bsp_led_t* g_led = NULL;
-bsp_ntc_t* g_ntc = NULL;
-bsp_rtc_t* g_rtc = NULL;
+bsp_heat_t* g_heat     = NULL;
+bsp_key_t* g_key       = NULL;
+bsp_led_t* g_led       = NULL;
+bsp_ntc_t* g_ntc       = NULL;
+bsp_rtc_t* g_rtc       = NULL;
 
 /*============================================================================
  * BSP 初始化
@@ -48,27 +48,27 @@ bsp_rtc_t* g_rtc = NULL;
 /** LED 硬件配置表（顺序对应 bsp_led_index_t） */
 static const bsp_led_hw_t led_hw_table[BSP_LED_COUNT] = {
     [BSP_LED_MUSIC] = {LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET},
-    [BSP_LED_BT] = {LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET},
+    [BSP_LED_BT]    = {LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET},
     [BSP_LED_10MIN] = {LED6_GPIO_Port, LED6_Pin, GPIO_PIN_RESET},
     [BSP_LED_30MIN] = {LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET},
     [BSP_LED_60MIN] = {LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET},
-    [BSP_LED_RF] = {LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET},
-    [BSP_LED_B] = {LED_B_GPIO_Port, LED_B_Pin, GPIO_PIN_RESET},
+    [BSP_LED_RF]    = {LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET},
+    [BSP_LED_B]     = {LED_B_GPIO_Port, LED_B_Pin, GPIO_PIN_RESET},
 };
 
 static void bsp_all_init(void) {
     /* ---- LED ---- */
     bsp_led_config_t led_cfg = {
         .hw_table = led_hw_table,
-        .count = BSP_LED_COUNT,
+        .count    = BSP_LED_COUNT,
     };
     bsp_led_init(&g_led, &led_cfg);
     bsp_led_set_mode(g_led, BSP_LED_B, BSP_LED_MODE_ON, 0); /* 默认亮蓝灯 */
 
     /* ---- Buzzer ---- */
     bsp_buzzer_config_t buzzer_cfg = {
-        .port = BEEP_GPIO_Port,
-        .pin = BEEP_Pin,
+        .port         = BEEP_GPIO_Port,
+        .pin          = BEEP_Pin,
         .active_level = GPIO_PIN_SET,
     };
     bsp_buzzer_init(&g_buzzer, &buzzer_cfg);
@@ -81,9 +81,9 @@ static void bsp_all_init(void) {
     /* ---- Heat (PWM) ---- */
     extern TIM_HandleTypeDef htim1;
     bsp_heat_config_t heat_cfg = {
-        .htim = &htim1,
-        .channel = TIM_CHANNEL_4,
-        .freq_hz = 1000,
+        .htim       = &htim1,
+        .channel    = TIM_CHANNEL_4,
+        .freq_hz    = 1000,
         .resolution = (uint32_t)htim1.Init.Period + 1,
     };
     bsp_heat_init(&g_heat, &heat_cfg);

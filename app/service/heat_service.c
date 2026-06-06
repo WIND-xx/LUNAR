@@ -71,11 +71,11 @@ static const HeatLevelTempMap s_heat_level_temp_map[] = {
 
 /* ---- 内部消息类型 ---- */
 typedef enum {
-    MSG_TIMER_EXPIRE = 0x01,
+    MSG_TIMER_EXPIRE  = 0x01,
     MSG_UPDATE_REMAIN = 0x02,
-    MSG_SET_STATUS = 0x03,
-    MSG_SET_LEVEL = 0x04,
-    MSG_SET_TIMER = 0x05
+    MSG_SET_STATUS    = 0x03,
+    MSG_SET_LEVEL     = 0x04,
+    MSG_SET_TIMER     = 0x05
 } HeatMsgType;
 
 typedef struct {
@@ -104,17 +104,17 @@ typedef struct {
 } HeatTaskPrivData;
 
 static HeatTaskPrivData s_heat_data = {
-    .status = HEAT_STATUS_STOP,
-    .level = HEAT_LEVEL_1,
+    .status             = HEAT_STATUS_STOP,
+    .level              = HEAT_LEVEL_1,
     .target_temperature = 35.0f,
-    .set_time_min = 0,
-    .remain_sec = 0,
-    .is_timing = false,
-    .mutex = NULL,
-    .ctrl_queue = NULL,
-    .heating_timer = NULL,
-    .remain_timer = NULL,
-    .ntc_fail_count = 0,
+    .set_time_min       = 0,
+    .remain_sec         = 0,
+    .is_timing          = false,
+    .mutex              = NULL,
+    .ctrl_queue         = NULL,
+    .heating_timer      = NULL,
+    .remain_timer       = NULL,
+    .ntc_fail_count     = 0,
 };
 
 /* ---- 锁 ---- */
@@ -148,11 +148,11 @@ static void heat_hw_turn_on(void) {
 static void heat_stop_all(void) {
     HeatStatus old_status = HEAT_STATUS_STOP;
     if (HEAT_LOCK()) {
-        old_status = s_heat_data.status;
-        s_heat_data.status = HEAT_STATUS_STOP;
-        s_heat_data.remain_sec = 0;
-        s_heat_data.set_time_min = 0;
-        s_heat_data.is_timing = false;
+        old_status                 = s_heat_data.status;
+        s_heat_data.status         = HEAT_STATUS_STOP;
+        s_heat_data.remain_sec     = 0;
+        s_heat_data.set_time_min   = 0;
+        s_heat_data.is_timing      = false;
         s_heat_data.ntc_fail_count = 0;
         HEAT_UNLOCK();
     }
@@ -181,7 +181,7 @@ static void remain_timer_callback(TimerHandle_t xTimer) {
 /* ---- 消息处理 ---- */
 static void process_msg_timer_expire(void) {
     HeatStatus st = HEAT_STATUS_STOP;
-    uint16_t tm = 0;
+    uint16_t tm   = 0;
     if (HEAT_LOCK()) {
         st = s_heat_data.status;
         tm = s_heat_data.set_time_min;
@@ -192,7 +192,7 @@ static void process_msg_timer_expire(void) {
 
 static void process_msg_update_remain(void) {
     uint32_t remain = 0;
-    HeatStatus st = HEAT_STATUS_STOP;
+    HeatStatus st   = HEAT_STATUS_STOP;
     if (HEAT_LOCK()) {
         st = s_heat_data.status;
         if (st == HEAT_STATUS_RUNNING && s_heat_data.remain_sec > 0) {
@@ -211,10 +211,10 @@ static void process_msg_update_remain(void) {
 
 static void process_msg_set_status(HeatStatus new_status) {
     HeatStatus old = HEAT_STATUS_STOP;
-    uint16_t tm = 0;
+    uint16_t tm    = 0;
     if (HEAT_LOCK()) {
-        old = s_heat_data.status;
-        tm = s_heat_data.set_time_min;
+        old                = s_heat_data.status;
+        tm                 = s_heat_data.set_time_min;
         s_heat_data.status = new_status;
         HEAT_UNLOCK();
     }
@@ -228,7 +228,7 @@ static void process_msg_set_status(HeatStatus new_status) {
         if (tm > 0) {
             if (HEAT_LOCK()) {
                 s_heat_data.remain_sec = (uint32_t)tm * 60;
-                s_heat_data.is_timing = true;
+                s_heat_data.is_timing  = true;
                 HEAT_UNLOCK();
             }
             if (s_heat_data.heating_timer) {
@@ -248,7 +248,7 @@ static void process_msg_set_level(HeatLevel new_level) {
     }
     float t = heat_get_temp_by_level(new_level);
     if (HEAT_LOCK()) {
-        s_heat_data.level = new_level;
+        s_heat_data.level              = new_level;
         s_heat_data.target_temperature = t;
         HEAT_UNLOCK();
     }
@@ -260,14 +260,14 @@ static void process_msg_set_timer(uint16_t minute) {
         LOG_PRINTF("Invalid timer: %d min (max: %d)\r\n", minute, HEAT_MAX_TIMER_MIN);
         return;
     }
-    HeatStatus st = HEAT_STATUS_STOP;
-    bool timing = (minute > 0);
+    HeatStatus st   = HEAT_STATUS_STOP;
+    bool timing     = (minute > 0);
     uint32_t remain = timing ? (uint32_t)minute * 60 : 0;
     if (HEAT_LOCK()) {
-        st = s_heat_data.status;
+        st                       = s_heat_data.status;
         s_heat_data.set_time_min = minute;
-        s_heat_data.is_timing = timing;
-        s_heat_data.remain_sec = remain;
+        s_heat_data.is_timing    = timing;
+        s_heat_data.remain_sec   = remain;
         HEAT_UNLOCK();
     }
     led_time_select(remain);
@@ -338,7 +338,7 @@ static void heat_pid_control(void) {
 static void heat_control_task(void* arg) {
     (void)arg;
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(HEAT_CONTROL_PERIOD_MS);
+    const TickType_t period  = pdMS_TO_TICKS(HEAT_CONTROL_PERIOD_MS);
 
     pid_init(&s_heat_data.pid, HEAT_PID_KP, HEAT_PID_KI, HEAT_PID_KD, HEAT_PID_DEADBAND, HEAT_PID_OUT_MIN,
              HEAT_PID_OUT_MAX);
@@ -399,8 +399,8 @@ static bool heat_create_freertos_resources(void) {
         vQueueDelete(s_heat_data.ctrl_queue);
         vSemaphoreDelete(s_heat_data.mutex);
         s_heat_data.heating_timer = NULL;
-        s_heat_data.ctrl_queue = NULL;
-        s_heat_data.mutex = NULL;
+        s_heat_data.ctrl_queue    = NULL;
+        s_heat_data.mutex         = NULL;
         return false;
     }
     return true;
@@ -420,10 +420,10 @@ bool heat_task_init(void) {
         xTimerDelete(s_heat_data.heating_timer, 0);
         vQueueDelete(s_heat_data.ctrl_queue);
         vSemaphoreDelete(s_heat_data.mutex);
-        s_heat_data.remain_timer = NULL;
+        s_heat_data.remain_timer  = NULL;
         s_heat_data.heating_timer = NULL;
-        s_heat_data.ctrl_queue = NULL;
-        s_heat_data.mutex = NULL;
+        s_heat_data.ctrl_queue    = NULL;
+        s_heat_data.mutex         = NULL;
         return false;
     }
     LOG_PRINTF("Heat task init success!\r\n");

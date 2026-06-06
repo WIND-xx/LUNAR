@@ -37,16 +37,16 @@ bsp_status_t bsp_led_init(bsp_led_t** handle, const bsp_led_config_t* config) {
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
     for (uint8_t i = 0; i < config->count && i < BSP_LED_COUNT; i++) {
-        s_inst.leds[i].hw = config->hw_table[i];
-        s_inst.leds[i].mode = BSP_LED_MODE_OFF;
+        s_inst.leds[i].hw          = config->hw_table[i];
+        s_inst.leds[i].mode        = BSP_LED_MODE_OFF;
         s_inst.leds[i].interval_ms = 500;
-        s_inst.leds[i].elapsed = 0;
+        s_inst.leds[i].elapsed     = 0;
         led_hw_write(i, false);
     }
 
     s_inst.initialized = true;
-    s_inited = true;
-    *handle = (bsp_led_t*)&s_inst;
+    s_inited           = true;
+    *handle            = (bsp_led_t*)&s_inst;
     return BSP_OK;
 }
 
@@ -54,14 +54,14 @@ void bsp_led_deinit(bsp_led_t** handle) {
     if (!handle || !*handle || !s_inited) return;
     for (uint8_t i = 0; i < BSP_LED_COUNT; i++) led_hw_write(i, false);
     s_inst.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited           = false;
+    *handle            = NULL;
 }
 
 bsp_status_t bsp_led_set_mode(bsp_led_t* handle, uint8_t index, bsp_led_mode_t mode, uint32_t interval_ms) {
     if (!handle || !s_inited || index >= BSP_LED_COUNT) return BSP_ERR_NOTINIT;
 
-    s_inst.leds[index].mode = mode;
+    s_inst.leds[index].mode    = mode;
     s_inst.leds[index].elapsed = 0;
 
     switch (mode) {

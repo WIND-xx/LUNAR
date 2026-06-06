@@ -76,7 +76,7 @@ SpacesBeforeTrailingComments: 2   # 尾注释前 2 空格
 # 6. 对齐
 # ==============================================================
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
+AlignConsecutiveAssignments: Consecutive
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left
 AlignOperands: true

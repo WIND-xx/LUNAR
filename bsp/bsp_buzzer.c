@@ -25,12 +25,12 @@ bsp_status_t bsp_buzzer_init(bsp_buzzer_t** handle, const bsp_buzzer_config_t* c
     if (!handle || !config || !config->port) return BSP_ERR_PARAM;
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
-    s_inst.port = config->port;
-    s_inst.pin = config->pin;
+    s_inst.port         = config->port;
+    s_inst.pin          = config->pin;
     s_inst.active_level = config->active_level;
-    s_inst.is_on = false;
-    s_inst.initialized = true;
-    s_inited = true;
+    s_inst.is_on        = false;
+    s_inst.initialized  = true;
+    s_inited            = true;
 
     HAL_GPIO_WritePin(s_inst.port, s_inst.pin, buzzer_pin_state(false));
     *handle = (bsp_buzzer_t*)&s_inst;
@@ -41,8 +41,8 @@ void bsp_buzzer_deinit(bsp_buzzer_t** handle) {
     if (!handle || !*handle || !s_inited) return;
     HAL_GPIO_WritePin(s_inst.port, s_inst.pin, buzzer_pin_state(false));
     s_inst.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited           = false;
+    *handle            = NULL;
 }
 
 bsp_status_t bsp_buzzer_on(bsp_buzzer_t* handle) {

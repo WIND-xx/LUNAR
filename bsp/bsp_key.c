@@ -19,8 +19,8 @@ static bool s_inited = false;
 
 static void key_init_gpio_pins(void) {
     GPIO_InitTypeDef cfg = {0};
-    cfg.Mode = GPIO_MODE_INPUT;
-    cfg.Pull = GPIO_PULLUP;
+    cfg.Mode             = GPIO_MODE_INPUT;
+    cfg.Pull             = GPIO_PULLUP;
 
     uint16_t pins_b = 0, pins_a = 0;
     for (uint8_t r = 0; r < s_inst.row_count; r++) {
@@ -50,12 +50,12 @@ bsp_status_t bsp_key_init(bsp_key_t** handle, const bsp_key_config_t* config) {
     if (!handle || !config || !config->rows || config->row_count == 0) return BSP_ERR_PARAM;
     if (*handle || s_inited) return BSP_ERR_BUSY;
 
-    s_inst.rows = config->rows;
-    s_inst.row_count = config->row_count;
-    s_inst.power_pin = config->power_pin;
-    s_inst.row_port = config->row_port ? config->row_port : GPIOB;
+    s_inst.rows        = config->rows;
+    s_inst.row_count   = config->row_count;
+    s_inst.power_pin   = config->power_pin;
+    s_inst.row_port    = config->row_port ? config->row_port : GPIOB;
     s_inst.initialized = true;
-    s_inited = true;
+    s_inited           = true;
 
     key_init_gpio_pins();
     *handle = (bsp_key_t*)&s_inst;
@@ -65,22 +65,22 @@ bsp_status_t bsp_key_init(bsp_key_t** handle, const bsp_key_config_t* config) {
 void bsp_key_deinit(bsp_key_t** handle) {
     if (!handle || !*handle || !s_inited) return;
     s_inst.initialized = false;
-    s_inited = false;
-    *handle = NULL;
+    s_inited           = false;
+    *handle            = NULL;
 }
 
 bsp_status_t bsp_key_scan(bsp_key_t* handle, uint8_t* key_value) {
     if (!handle || !s_inited) return BSP_ERR_NOTINIT;
     if (!key_value) return BSP_ERR_PARAM;
 
-    uint8_t mode = 0;
+    uint8_t mode         = 0;
     GPIO_InitTypeDef cfg = {0};
 
     for (uint8_t row = 0; row < s_inst.row_count; row++) {
         const bsp_key_row_t* r = &s_inst.rows[row];
-        cfg.Pin = r->output_pin;
-        cfg.Mode = GPIO_MODE_OUTPUT_PP;
-        cfg.Speed = GPIO_SPEED_FREQ_LOW;
+        cfg.Pin                = r->output_pin;
+        cfg.Mode               = GPIO_MODE_OUTPUT_PP;
+        cfg.Speed              = GPIO_SPEED_FREQ_LOW;
         HAL_GPIO_Init(s_inst.row_port, &cfg);
         HAL_GPIO_WritePin(s_inst.row_port, r->output_pin, GPIO_PIN_RESET);
 
@@ -91,7 +91,7 @@ bsp_status_t bsp_key_scan(bsp_key_t* handle, uint8_t* key_value) {
             if (HAL_GPIO_ReadPin(port, pin) == GPIO_PIN_RESET) mode = r->key_values[col];
         }
 
-        cfg.Pin = r->output_pin;
+        cfg.Pin  = r->output_pin;
         cfg.Mode = GPIO_MODE_INPUT;
         cfg.Pull = GPIO_PULLUP;
         HAL_GPIO_Init(s_inst.row_port, &cfg);

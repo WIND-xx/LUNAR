@@ -41,10 +41,10 @@ const RegisterDescriptor g_register_table[REG_COUNT] = {
 };
 
 /* 静态变量 */
-static uint16_t g_registers[REG_COUNT] = {0};
+static uint16_t g_registers[REG_COUNT]        = {0};
 static RegisterWriteCallback g_write_callback = NULL;
-static RegisterReadCallback g_read_callback = NULL;
-static SemaphoreHandle_t g_reg_mutex = NULL;  // 寄存器互斥锁
+static RegisterReadCallback g_read_callback   = NULL;
+static SemaphoreHandle_t g_reg_mutex          = NULL;  // 寄存器互斥锁
 
 /* 内部函数声明 */
 static bool is_valid_register(RegisterID reg);
@@ -138,12 +138,12 @@ static bool process_utc_timestamp(uint16_t start_reg, uint16_t reg_num, const ui
     // 检查是否有足够的数据处理UTC时间戳
     if ((start_reg == REG_UTC_TIMESTAMP_HIGH) && (reg_num >= 2)) {
         uint16_t high_val = (write_buf[0] << 8) | write_buf[1];
-        uint16_t low_val = (write_buf[2] << 8) | write_buf[3];
+        uint16_t low_val  = (write_buf[2] << 8) | write_buf[3];
         uint32_t utc_full = ((uint32_t)high_val << 16) | low_val;
 
         // 更新寄存器
         g_registers[REG_UTC_TIMESTAMP_HIGH] = high_val;
-        g_registers[REG_UTC_TIMESTAMP_LOW] = low_val;
+        g_registers[REG_UTC_TIMESTAMP_LOW]  = low_val;
 
         // 设置RTC
         if (bsp_rtc_set_utc(g_rtc, utc_full) == BSP_OK) { return true; }
@@ -331,7 +331,7 @@ static void build_exception_response(uint8_t slave_addr, uint8_t func_code, uint
     response[0] = slave_addr;
     response[1] = func_code | 0x80;  // 设置异常标志
     response[2] = exception_code;
-    *resp_len = 3;
+    *resp_len   = 3;
 }
 
 /**
@@ -384,7 +384,7 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
     // 验证CRC
     if (!protocol_validate_crc(data, len)) { return PROTOCOL_ERR_CRC; }
 
-    uint8_t func_code = data[1];
+    uint8_t func_code     = data[1];
     ProtocolResult result = PROTOCOL_SUCCESS;
 
     switch (func_code) {
@@ -428,7 +428,7 @@ ProtocolResult protocol_process_frame(const uint8_t* data, uint16_t len, uint8_t
             break;
         }
 
-        uint16_t reg_addr = (data[2] << 8) | data[3];
+        uint16_t reg_addr  = (data[2] << 8) | data[3];
         uint16_t reg_value = (data[4] << 8) | data[5];
 
         result = handle_write_single_register(slave_addr, reg_addr, reg_value, response, resp_len);
@@ -471,8 +471,8 @@ bool protocol_handle_request(const uint8_t* data, size_t len) {
 
     /* 有响应数据（成功或异常）才发送 */
     if (resp_len > 0) {
-        uint16_t crc = protocol_calc_crc16(response, resp_len);
-        response[resp_len] = (uint8_t)(crc & 0xFF);
+        uint16_t crc           = protocol_calc_crc16(response, resp_len);
+        response[resp_len]     = (uint8_t)(crc & 0xFF);
         response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
         bsp_bt401_send(g_bt401, response, resp_len + 2);
@@ -509,7 +509,7 @@ ProtocolResult register_batch_write(RegisterID start_reg, const uint16_t* values
     if (REG_LOCK() != pdTRUE) { return PROTOCOL_ERR_BUSY; }
 
     for (uint8_t i = 0; i < count; i++) {
-        RegisterID reg = (RegisterID)(start_reg + i);
+        RegisterID reg   = (RegisterID)(start_reg + i);
         g_registers[reg] = values[i];
 
         if (g_write_callback != NULL) { g_write_callback(reg, values[i]); }
@@ -605,7 +605,7 @@ void protocol_upload_heating_status(void) {
             value = g_registers[reg];
         }
 
-        response[3 + (i * 2)] = (uint8_t)((value >> 8) & 0xFF);
+        response[3 + (i * 2)]     = (uint8_t)((value >> 8) & 0xFF);
         response[3 + (i * 2) + 1] = (uint8_t)(value & 0xFF);
     }
 
@@ -614,8 +614,8 @@ void protocol_upload_heating_status(void) {
     uint16_t resp_len = 3 + (HEATING_REG_COUNT * 2);
 
     // 计算CRC并发送
-    uint16_t crc = protocol_calc_crc16(response, resp_len);
-    response[resp_len] = (uint8_t)(crc & 0xFF);
+    uint16_t crc           = protocol_calc_crc16(response, resp_len);
+    response[resp_len]     = (uint8_t)(crc & 0xFF);
     response[resp_len + 1] = (uint8_t)((crc >> 8) & 0xFF);
 
     bsp_bt401_send(g_bt401, response, resp_len + 2);
